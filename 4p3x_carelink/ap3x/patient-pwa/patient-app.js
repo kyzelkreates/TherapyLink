@@ -1,4 +1,4 @@
-/* 4P3X CareLink — Patient Recovery PWA App
+/* TherapyLink™ — Patient Recovery PWA App
    Standalone installable PWA version (patient-pwa/index.html)
    All data via localStorage SSOT — no backend required
    Created by Kyzel Kreates · Powered by 4P3X Intelligent AI     */
@@ -100,7 +100,7 @@ function buildOnboarding() {
   document.getElementById('onboarding').innerHTML = `
   <div class="ob-inner">
     <div class="ob-step active" id="ob1">
-      <div class="ob-logo"><div style="font-size:48px">🧠</div><div class="ob-brand">4P3X CareLink™</div><div class="ob-brand-sub">My Recovery Support</div></div>
+      <div class="ob-logo"><div style="font-size:48px">🧠</div><div class="ob-brand">TherapyLink™</div><div class="ob-brand-sub">My Recovery Support</div></div>
       <h1 class="ob-title">Welcome to your Mental Health Recovery Portal</h1>
       <p class="ob-desc">Guided daily check-ins, wellbeing lessons, coping strategies, and progress tracking — all built around your recovery.</p>
       <div class="ob-feats">
@@ -196,7 +196,7 @@ function buildPortal() {
   applyTheme();
   document.getElementById('portal-root').innerHTML = `
     <header class="portal-header">
-      <div class="ph-brand"><div class="brand-dot"></div><div><div class="brand-name">4P3X CareLink™</div><div class="brand-sub">My Recovery Support</div></div></div>
+      <div class="ph-brand"><div class="brand-dot"></div><div><div class="brand-name">TherapyLink™</div><div class="brand-sub">My Recovery Support</div></div></div>
       <div class="ph-right">
         <span class="xp-chip" id="xp-chip">⚡ 0 XP</span>
         <button class="btn-icon" onclick="toggleTheme()">🌙</button>

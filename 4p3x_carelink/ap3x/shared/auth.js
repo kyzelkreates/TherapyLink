@@ -1,4 +1,4 @@
-// 4P3X CareLink — Local Auth
+// TherapyLink™ — Local Auth
 // Local-first auth layer using localStorage + SubtleCrypto SHA-256.
 // Swap for Supabase Auth in production.
 //

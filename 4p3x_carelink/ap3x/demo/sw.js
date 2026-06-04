@@ -1,7 +1,7 @@
-// 4P3X CareLink — Service Worker
+// TherapyLink™ — Service Worker
 // Offline-first caching for Therapist Dashboard & Patient PWA
 
-const CACHE_NAME = '4p3x-carelink-v1';
+const CACHE_NAME = 'therapylink-v1';
 const PRECACHE_ASSETS = [
   './index.html',
   './clinician-demo.html',

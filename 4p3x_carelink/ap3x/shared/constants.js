@@ -1,4 +1,4 @@
-// 4P3X CareLink — Shared Constants
+// TherapyLink™ — Shared Constants
 // Single source of truth for keys, thresholds, roles, and disclaimer.
 // Used across Patient PWA and Therapist Dashboard.
 
@@ -52,7 +52,7 @@ export const THRESHOLDS = {
 
 // ── Safety disclaimer (required in all UI footers) ────────────────
 export const DISCLAIMER =
-  '4P3X CareLink Therapy Dashboard™ supports mental health education, reflection, and ' +
+  'TherapyLink™ supports mental health education, reflection, and ' +
   'therapist-guided monitoring. It does not provide emergency support, medical diagnosis, ' +
   'clinical treatment, or a replacement for professional care. All risk indicators are ' +
   'informational only and must be reviewed by a qualified clinician. ' +
@@ -61,8 +61,8 @@ export const DISCLAIMER =
 
 // ── Product identity ──────────────────────────────────────────────
 export const BRAND = {
-  name:      '4P3X CareLink Therapy Dashboard™',
-  shortName: '4P3X CareLink',
+  name:      'TherapyLink™',
+  shortName: 'TherapyLink™',
   tagline:   'Patient Recovery PWA + Therapist Monitoring Dashboard',
   powered:   'Powered by 4P3X Intelligent AI — Created by Kyzel Kreates',
   version:   '2.0.0'

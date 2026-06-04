@@ -1,7 +1,7 @@
-// 4P3X CareLink — Patient PWA Service Worker
+// TherapyLink™ — Patient PWA Service Worker
 // Offline-first caching for Patient Recovery Portal
 
-const CACHE_NAME   = '4p3x-patient-pwa-v1';
+const CACHE_NAME   = 'therapylink-patient-v1';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_ASSETS = [
