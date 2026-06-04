@@ -2,7 +2,7 @@
 // Offline-first caching for Patient Recovery Portal
 // v3 — force reload lesson content
 
-const CACHE_NAME   = 'therapylink-patient-v3';
+const CACHE_NAME   = 'therapylink-patient-v4';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_ASSETS = [
