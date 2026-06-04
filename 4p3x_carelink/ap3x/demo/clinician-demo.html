@@ -1047,19 +1047,19 @@ function sharePwa(method){
   const code=getInviteCode();
   const msg='Hi, here is your TherapyLink™ Patient PWA access link. You can use it to complete check-ins, lessons, reflections, and recovery progress updates between sessions: '+url+' (Code: '+code+')';
   const emailSubject='Your TherapyLink™ Patient PWA Access';
-  const emailBody='Hi,
+  const emailBody=`Hi,
 
 Here is your TherapyLink™ Patient PWA access link:
 
-'+url+'
+${url}
 
-Invite Code: '+code+'
+Invite Code: ${code}
 
 You can use this to complete daily check-ins, mental health lessons, reflections, and recovery progress updates between sessions.
 
 TherapyLink™ supports reflection and therapist-guided monitoring. It is not an emergency service. If you feel at immediate risk or in crisis, contact local emergency services or a crisis support line immediately.
 
-Powered by 4P3X Intelligent AI™ Created by Kyzel Kreates™';
+Powered by 4P3X Intelligent AI™ Created by Kyzel Kreates™`;
   const smsTxt='Your TherapyLink™ Patient PWA access link: '+url+' (Code: '+code+')';
 
   if(method==='copy'){
