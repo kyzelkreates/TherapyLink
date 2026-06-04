@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="theme-color" content="#3a7d44"/>
+<title>🎓 Course Library — Four Paws</title>
+<link rel="stylesheet" href="./app.css"/>
+<style>
+.picker-hero{background:linear-gradient(135deg,#1a3d22,#3a7d44);border-radius:var(--r);padding:20px 18px;color:#fff;margin-bottom:18px}
+.picker-hero h2{font-size:20px;font-weight:900;margin:0 0 4px}
+.picker-hero p{font-size:12px;opacity:.72;margin:0}
+.course-grid{display:flex;flex-direction:column;gap:12px;margin-bottom:80px}
+.course-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,box-shadow .15s;display:block;text-decoration:none;color:inherit}
+.course-card:active{transform:scale(.98);box-shadow:none}
+.cc-top{display:flex;align-items:center;gap:13px;padding:16px 16px 10px}
+.cc-emoji{font-size:32px;flex-shrink:0}
+.cc-info{flex:1}
+.cc-name{font-size:15px;font-weight:800;color:var(--text);margin-bottom:2px}
+.cc-meta{font-size:11px;color:var(--muted)}
+.cc-pct{font-size:14px;font-weight:800;color:var(--primary)}
+.cc-bar-wrap{padding:0 16px 14px}
+.cc-bar-track{height:6px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.cc-bar-fill{height:100%;border-radius:99px;background:var(--primary);transition:width .5s ease}
+.cc-tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--primary-xl);color:var(--primary);border:1px solid rgba(58,125,68,.2);margin-left:8px}
+.cc-tag.new{background:#fff8e1;color:#d4891a;border-color:rgba(244,164,53,.3)}
+.masterclass-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:99px;padding:4px 12px;font-size:11px;font-weight:700;margin-bottom:10px}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:6px 0 10px}
+</style>
+</head>
+<body class="theme-light" data-page="course-picker">
+
+<header class="fp-header">
+  <div class="header-left">
+    <a href="./index.html" class="back-btn">← Home</a>
+  </div>
+  <div class="header-right">
+    <span class="xp-chip" id="xp-chip">⚡ 0 XP</span>
+    <button class="btn-icon" id="theme-toggle">🌙</button>
+  </div>
+</header>
+
+<div id="streak-banner" class="streak-banner" style="display:none"><span id="streak-text"></span></div>
+
+<main class="page-shell animate-in">
+  <div class="picker-hero">
+    <div class="masterclass-badge">🐾 Four Paws Academy</div>
+    <h2>Course Library</h2>
+    <p>Choose a training programme to start or continue</p>
+  </div>
+
+  <div class="section-label">🌟 Puppy Masterclass</div>
+  <div class="course-grid" id="masterclass-grid"></div>
+
+  <div class="section-label" id="extended-label" style="display:none">📚 Extended Programmes</div>
+  <div class="course-grid" id="extended-grid"></div>
+</main>
+
+<div id="fp-nav"></div>
+
+<script src="./app-shared.js"></script>
+<script src="../../fp-courses.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', renderPicker);
+
+/* ── Puppy Masterclass (built-in, from CURRICULUM) ── */
+function getMasterclassCourse() {
+  const totalLessons = CURRICULUM.reduce((s,m)=>s+m.lessons.length,0);
+  const done = APP.completedLessons.filter(id=>CURRICULUM.some(m=>m.lessons.some(l=>l.id===id))).length;
+  const pct = totalLessons ? Math.round(done/totalLessons*100) : 0;
+  return {
+    id:'puppy-masterclass',
+    name:'Puppy Masterclass',
+    emoji:'🐾',
+    tag:'Core',
+    modules: CURRICULUM.length,
+    lessons: totalLessons,
+    done, pct,
+    href:'./courses.html'
+  };
+}
+
+/* ── Extended courses (from fp-courses.js) ── */
+function getExtendedCourses() {
+  if (!window.FP_COURSE || !FP_COURSE.modules.length) return [];
+  const map = {};
+  FP_COURSE.modules.forEach(m => {
+    if (!map[m.courseId]) {
+      map[m.courseId] = { courseId:m.courseId, courseName:m.courseName, emoji:m.emoji, modules:[] };
+    }
+    map[m.courseId].modules.push(m);
+  });
+  return Object.values(map).map(c => {
+    const totalLessons = c.modules.reduce((s,m)=>s+m.lessons.length,0);
+    const doneKey = 'fp_ext_done_'+c.courseId;
+    const done = load(doneKey,[]).length;
+    const pct = totalLessons ? Math.round(done/totalLessons*100) : 0;
+    return {
+      id: c.courseId,
+      name: c.courseName,
+      emoji: c.modules[0].emoji,
+      tag: 'Programme',
+      modules: c.modules.length,
+      lessons: totalLessons,
+      done, pct,
+      href: './course-view.html?course='+c.courseId
+    };
+  });
+}
+
+function courseCardHTML(c) {
+  const tagNew = c.pct === 0 ? '<span class="cc-tag new">NEW</span>' : '';
+  return `<a class="course-card" href="${c.href}">
+    <div class="cc-top">
+      <span class="cc-emoji">${c.emoji}</span>
+      <div class="cc-info">
+        <div class="cc-name">${c.name}${tagNew}</div>
+        <div class="cc-meta">${c.modules} modules &bull; ${c.lessons} lessons</div>
+      </div>
+      <div class="cc-pct">${c.pct}%</div>
+    </div>
+    <div class="cc-bar-wrap">
+      <div class="cc-bar-track"><div class="cc-bar-fill" style="width:${c.pct}%"></div></div>
+    </div>
+  </a>`;
+}
+
+function renderPicker() {
+  // Masterclass
+  const mc = getMasterclassCourse();
+  document.getElementById('masterclass-grid').innerHTML = courseCardHTML(mc);
+
+  // Extended
+  const ext = getExtendedCourses();
+  if (ext.length) {
+    document.getElementById('extended-label').style.display = '';
+    document.getElementById('extended-grid').innerHTML = ext.map(courseCardHTML).join('');
+  }
+}
+</script>
+</body>
+</html>
