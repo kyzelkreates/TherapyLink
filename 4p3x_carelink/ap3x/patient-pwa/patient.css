@@ -403,3 +403,6 @@ body {
 }
 .toast.hidden { display: none !important; }
 .hidden { display: none !important; }
+
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.lesson-item{cursor:pointer}
