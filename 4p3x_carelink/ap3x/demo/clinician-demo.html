@@ -915,7 +915,7 @@ async function testBackendConnection(provider){
     showMsg('Testing connection…',false);
     try{
       // Safe lightweight test — attempt to fetch the project URL head
-      const testUrl=bs.supabase.url.replace(/\/$/','')+'/rest/v1/';
+      const testUrl=bs.supabase.url.replace(/\/$/, '')+'/rest/v1/';
       const res=await fetch(testUrl,{method:'GET',headers:{'apikey':bs.supabase.anonKey,'Authorization':'Bearer '+bs.supabase.anonKey},signal:AbortSignal.timeout(8000)});
       if(res.ok||res.status===400||res.status===401||res.status===200){
         bs.supabase.status='connected';bs.supabase.lastTestedAt=new Date().toISOString();bs.supabase.errorMessage='';
@@ -937,7 +937,7 @@ async function testBackendConnection(provider){
     bs.custom.status='testing';saveBackendSettings(bs);setStatusBadge('customStatus','testing');
     showMsg('Testing connection…',false);
     try{
-      const res=await fetch(url.replace(/\/$/','')+'/health',{method:'GET',signal:AbortSignal.timeout(8000)});
+      const res=await fetch(url.replace(/\/$/, '')+'/health',{method:'GET',signal:AbortSignal.timeout(8000)});
       bs.custom.status=res.ok?'connected':'failed';bs.custom.lastTestedAt=new Date().toISOString();
       saveBackendSettings(bs);setStatusBadge('customStatus',bs.custom.status);
       showMsg(res.ok?'✅ Health endpoint reachable.':'⚠️ Health endpoint returned HTTP '+res.status+'. CORS may be blocking.',!res.ok);
