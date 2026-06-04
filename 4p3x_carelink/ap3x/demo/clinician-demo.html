@@ -13,6 +13,7 @@
   <meta name="msapplication-TileImage" content="../../icons/tl-144.png"/>
   <meta name="msapplication-TileColor" content="#0a0a0a"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="manifest" href="manifest.json"/>
 <title>TherapyLink™ — Therapist Dashboard</title>
 <style>
 :root{
@@ -30,7 +31,7 @@
 }
 [data-theme=light]{--bg:#f0f4f8;--surface:#fff;--surface2:#e8f0fe;--surface3:#f4f6fa;--sidebar:#0f2d52;--sidebar-txt:#c8d8f0;--border:#d1dce8;--border2:#c0ccd8;--text:#1e293b;--muted:#64748b;--light:#94a3b8;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;font-size:14px;line-height:1.5}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);display:block;min-height:100vh;font-size:14px;line-height:1.5}
 .layout{display:flex;width:100%;min-height:100vh}
 .sidebar{width:var(--sw);min-height:100vh;background:var(--sidebar);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:200;transition:transform var(--t)}
 .sb-brand{display:flex;align-items:center;gap:10px;padding:20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
@@ -40,7 +41,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .sb-sub{color:var(--sidebar-txt);font-size:10px;line-height:1.3}
 .sb-section{padding:10px 16px 4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.25);font-weight:700}
 .sb-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--rs);background:none;border:none;color:var(--sidebar-txt);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);text-align:left;width:100%}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--rs);background:none;border:none;color:var(--sidebar-txt);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--t);text-align:left;width:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
 .nav-item.active{background:rgba(201,168,76,.15);color:var(--gold);border-left:3px solid var(--gold)}
 .nav-badge{margin-left:auto;background:var(--high);color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 7px;min-width:18px;text-align:center}
@@ -52,9 +53,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .sb-footer-btns{display:flex;gap:6px}
 .back-btn{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:var(--sidebar-txt);border-radius:var(--rs);padding:5px 10px;font-size:11px;cursor:pointer;text-decoration:none;text-align:center;transition:all var(--t)}
 .back-btn:hover{color:#fff;background:rgba(255,255,255,.15)}
-.hamburger{display:none;position:fixed;top:14px;left:14px;z-index:300;background:var(--gold);border:none;border-radius:var(--rs);padding:8px 10px;cursor:pointer;flex-direction:column;gap:5px}
+.hamburger{display:none;position:fixed;top:14px;left:14px;z-index:1000;background:var(--gold);border:none;border-radius:var(--rs);padding:8px 10px;cursor:pointer;flex-direction:column;gap:5px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none}
 .hamburger span{display:block;width:20px;height:2px;background:#000;border-radius:2px}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:900}
 .main-area{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:var(--shadow);position:sticky;top:0;z-index:50}
 .topbar-left{display:flex;align-items:center;gap:12px}
@@ -187,20 +188,20 @@ tr:hover td{background:var(--surface2)}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .empty-state{color:var(--muted);font-size:13px;padding:24px;text-align:center}
 .hidden{display:none!important}
-.cli-footer{padding:12px 24px;font-size:11px;color:var(--light);border-top:1px solid var(--border);background:var(--surface);line-height:1.4}
+.cli-footer{padding:12px 24px;font-size:11px;color:var(--light);border-top:1px solid var(--border);background:var(--surface);line-height:1.4;margin-top:auto}
 .demo-banner{background:rgba(201,168,76,.1);border:1px solid var(--gold-d);border-radius:var(--rs);padding:8px 16px;font-size:12px;color:var(--gold);font-weight:600;display:flex;align-items:center;gap:8px;margin:12px 24px 0}
 .demo-banner.hidden{display:none!important}
 @media(max-width:900px){.stats-row{grid-template-columns:repeat(3,1fr)}.analytics-row{grid-template-columns:1fr}}
 @media(max-width:768px){
-  .hamburger{display:flex}.sidebar{position:fixed;left:0;top:0;transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.overlay.open{display:block}
-  .topbar{padding:14px 14px 14px 58px}.topbar-search{display:none}.view{padding:16px}
+  .hamburger{display:flex}.sidebar{position:fixed;left:0;top:0;height:100%;height:100dvh;transform:translateX(-100%);z-index:950}.sidebar.open{transform:translateX(0)}.overlay.open{display:block}
+  .topbar{padding:14px 14px 14px 58px}.topbar-search{display:none}.topbar-logo{display:block!important}.view{padding:16px}
   .stats-row{grid-template-columns:repeat(2,1fr)}.detail-panel{width:100%;max-width:100%}
 }
 @media(max-width:520px){.stats-row{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
-<button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+<button class="hamburger" id="hamburger" type="button" onclick="toggleSidebar()" aria-label="Menu" aria-expanded="false" aria-controls="sidebar">
   <span></span><span></span><span></span>
 </button>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -208,8 +209,8 @@ tr:hover td{background:var(--surface2)}
 
 <aside class="sidebar" id="sidebar">
   <div class="sb-brand">
-    <div class="sb-dot"></div>
-    <div><div class="sb-name">TherapyLink™</div><div class="sb-sub">Therapist Dashboard<br/>Powered by 4P3X Intelligent AI</div></div>
+    <img src="../../icons/tl-72.png" alt="TherapyLink™" style="width:36px;height:36px;border-radius:8px;flex-shrink:0"/>
+    <div><div class="sb-name">TherapyLink™</div><div class="sb-sub">Therapist Dashboard<br/>Powered by 4P3X Intelligent AI™</div></div>
   </div>
   <nav class="sb-nav">
     <div class="sb-section">Overview</div>
@@ -241,6 +242,7 @@ tr:hover td{background:var(--surface2)}
 <div class="main-area">
   <div class="topbar">
     <div class="topbar-left">
+      <img src="../../icons/tl-72.png" alt="" class="topbar-logo" style="width:28px;height:28px;border-radius:6px;display:none"/>
       <div class="topbar-title" id="topbarTitle">Therapist Monitoring Dashboard</div>
       <div class="rt-ind"><div class="pulse-dot"></div><span id="demoIndicator">Demo Mode</span></div>
     </div>
@@ -538,11 +540,11 @@ tr:hover td{background:var(--surface2)}
       <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:var(--rs);padding:10px 12px;font-size:11px;color:var(--muted);line-height:1.6">⚠️ Risk indicators are based on patient self-report and are <strong>not a clinical diagnosis</strong>. Always apply clinical judgement. If a patient is in immediate danger, contact emergency services.</div>
     </div>
   </div>
+  <footer class="cli-footer"><img src="../../icons/tl-72.png" alt="" style="width:20px;height:20px;border-radius:4px;vertical-align:middle;margin-right:8px"/>TherapyLink™ — Supports wellbeing monitoring and therapist-guided workflows. Does not provide emergency support, medical diagnosis, or clinical treatment. Created by Kyzel Kreates · Powered by 4P3X Intelligent AI™</footer>
 </div>
 </div>
 
 <div class="toast hidden" id="toast"></div>
-<footer class="cli-footer">TherapyLink™ — Supports wellbeing monitoring and therapist-guided workflows. Does not provide emergency support, medical diagnosis, or clinical treatment. Created by Kyzel Kreates · Powered by 4P3X Intelligent AI</footer>
 
 <script>
 'use strict';
@@ -602,8 +604,23 @@ function renderAll(){renderStats();renderOverviewChart();renderDonut();renderUrg
 function updateClock(){const n=new Date();document.getElementById('clockEl').textContent=n.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
 function toggleTheme(){dark=!dark;sSet('4p3x_theme',dark?'dark':'light');applyTheme();}
 function applyTheme(){document.body.dataset.theme=dark?'':'light';}
-function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('open');}
-function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('overlay');
+  const hb=document.getElementById('hamburger');
+  const isOpen=sb.classList.toggle('open');
+  ov.classList.toggle('open',isOpen);
+  if(hb)hb.setAttribute('aria-expanded',isOpen?'true':'false');
+  // Prevent body scroll when sidebar open on mobile
+  document.body.style.overflow=isOpen?'hidden':'';
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+  const hb=document.getElementById('hamburger');
+  if(hb)hb.setAttribute('aria-expanded','false');
+  document.body.style.overflow='';
+}
 
 function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));
