@@ -1,14 +1,14 @@
 // TherapyLink™ — Patient PWA Service Worker
 // Offline-first caching for Patient Recovery Portal
-// v2 — bumped to bust old lesson cache
+// v3 — force reload lesson content
 
-const CACHE_NAME   = 'therapylink-patient-v2';
+const CACHE_NAME   = 'therapylink-patient-v3';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_ASSETS = [
   './index.html',
   './patient.css',
-  './patient-app.js',
+  './patient-app.js?v=3',
   './manifest.json',
   './ap3x-sw.js',
   './chart.js',
