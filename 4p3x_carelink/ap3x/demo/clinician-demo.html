@@ -104,6 +104,13 @@ th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transfo
 td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--surface2)}
+.empty-state-block{text-align:center;padding:48px 24px;background:var(--surface);border-radius:var(--r);border:1.5px dashed var(--border)}
+.backend-panel{transition:all .18s ease}
+.backend-panel input{font-family:inherit}
+.btn-primary.sm,.btn-secondary.sm{padding:7px 14px;font-size:12px;border-radius:var(--rs)}
+.es-icon{font-size:40px;margin-bottom:12px}
+.es-title{font-size:16px;font-weight:700;margin-bottom:8px}
+.es-sub{font-size:13px;color:var(--muted);line-height:1.6;max-width:480px;margin:0 auto}
 .tbl-toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .search-input{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rs);padding:8px 14px;font-size:13px;color:var(--text);outline:none;flex:1;min-width:180px}
 .search-input:focus{border-color:var(--gold)}
@@ -207,7 +214,7 @@ tr:hover td{background:var(--surface2)}
     <button class="nav-item" id="nav-timeline" onclick="showView('timeline')"><span>📅</span><span>Timeline</span></button>
     <div class="sb-section">Tools</div>
     <button class="nav-item" id="nav-notes" onclick="showView('notes')"><span>📝</span><span>Notes</span></button>
-    <button class="nav-item" id="nav-settings" onclick="showView('settings')"><span>⚙️</span><span>Settings</span></button>
+    <button class="nav-item" id="nav-settings" onclick="showView('settings')"><span>⚙️</span><span>Settings</span><span class="nav-badge warn" id="syncNavBadge" style="display:none">!</span></button>
   </nav>
   <div class="sb-footer">
     <div class="clin-chip">
@@ -247,11 +254,37 @@ tr:hover td{background:var(--surface2)}
       </div>
     </div>
     <div class="stats-row" id="statsRow"></div>
+    <div id="overviewEmpty" style="display:none;margin-bottom:20px">
+      <div class="empty-state-block">
+        <div class="es-icon">📊</div>
+        <div class="es-title">No live patient data yet.</div>
+        <div class="es-sub">Demo Mode is off. Connect a backend or add real patients to start using TherapyLink™ in live mode.</div>
+      </div>
+    </div>
     <div class="analytics-row">
       <div class="analytics-card"><div class="ac-title">📈 Weekly Anxiety/Stress Trends (All Patients)</div><canvas id="overviewChart" height="110"></canvas></div>
       <div class="analytics-card"><div class="ac-title">🎯 Risk Distribution</div><div class="donut-wrap"><canvas id="donutChart" width="90" height="90"></canvas><div class="donut-legend" id="donutLegend"></div></div></div>
     </div>
-    <div class="view-header" style="margin-bottom:12px"><div style="font-size:15px;font-weight:700">⚠️ Patients Needing Attention</div><button class="btn-secondary" onclick="showView('patients')">View All →</button></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+        <div class="analytics-card" id="syncOverviewCard">
+          <div class="ac-title">🔄 Sync Status</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Mode</span><span id="syncOverviewMode">Local-only</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Pending</span><span id="syncOverviewPending">0 records</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Last synced</span><span id="syncOverviewLast">Never</span></div>
+          </div>
+        </div>
+        <div class="analytics-card">
+          <div class="ac-title">📤 Quick Share</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Share Patient PWA with a patient</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn-secondary sm" onclick="sharePwa('copy')">📋 Copy</button>
+            <button class="btn-secondary sm" onclick="sharePwa('whatsapp')">💬 WhatsApp</button>
+            <button class="btn-secondary sm" onclick="sharePwa('email')">📧 Email</button>
+          </div>
+        </div>
+      </div>
+      <div class="view-header" style="margin-bottom:12px"><div style="font-size:15px;font-weight:700">⚠️ Patients Needing Attention</div><button class="btn-secondary" onclick="showView('patients')">View All →</button></div>
     <div class="patient-grid" id="urgentGrid"></div>
   </div>
 
@@ -345,6 +378,132 @@ tr:hover td{background:var(--surface2)}
       <div class="settings-title">⚠️ Safety Notice</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.7;padding:8px;background:var(--surface2);border-radius:var(--rs)">TherapyLink™ supports mental health education, reflection, and therapist-guided monitoring. It does not provide emergency support, medical diagnosis, or a replacement for professional care. All risk indicators are informational only. If a patient is in immediate danger, contact emergency services immediately.</div>
     </div>
+
+    <!-- ── PART 2: BACKEND CONFIGURATION ── -->
+    <div class="settings-section" id="backendConfigSection">
+      <div class="settings-title">🔌 Backend Configuration</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Prepare TherapyLink™ for live backend sync. Local-first mode works without any backend configuration.</div>
+      <div style="background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.25);border-radius:var(--rs);padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--high);line-height:1.6">
+        <strong>🛡️ 4P3X API Config Guard™</strong><br/>Only public/client-safe configuration should be entered here. Never paste service role keys, database passwords, private keys, API secrets, JWT secrets, webhook secrets, or backend-only credentials into the frontend.
+      </div>
+      <div class="setting-row" style="align-items:flex-start">
+        <div><div class="setting-label">Backend Provider</div><div class="setting-desc">Choose your backend platform or keep local-only mode</div></div>
+        <select class="filter-sel" id="backendModeSelect" onchange="onBackendModeChange()" style="min-width:160px">
+          <option value="local">Local-only mode</option>
+          <option value="supabase">Supabase</option>
+          <option value="firebase">Firebase</option>
+          <option value="aws">AWS / Amplify</option>
+          <option value="custom">Custom REST API</option>
+        </select>
+      </div>
+
+      <!-- Local only -->
+      <div id="backend-local" class="backend-panel">
+        <div style="padding:12px;background:var(--surface2);border-radius:var(--rs);border:1px solid var(--border);font-size:13px;color:var(--muted);margin-top:8px">
+          ✅ <strong>Local-only mode active.</strong> TherapyLink™ is using existing local storage. No backend connection required. Patient data stays on this device.
+        </div>
+      </div>
+
+      <!-- Supabase -->
+      <div id="backend-supabase" class="backend-panel" style="display:none">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+          <div class="setting-row"><div><div class="setting-label">Project URL</div><div class="setting-desc">e.g. https://your-project.supabase.co</div></div><input id="sbUrl" type="url" class="crisis-field" style="width:260px" placeholder="https://xxxx.supabase.co"/></div>
+          <div class="setting-row"><div><div class="setting-label">Anon Public Key</div><div class="setting-desc">Safe to use in frontend — not your service role key</div></div><input id="sbKey" type="text" class="crisis-field" style="width:260px" placeholder="eyJhbGci…"/></div>
+          <div class="setting-row"><div><div class="setting-label">Connection Status</div></div><span class="risk-badge" id="sbStatus">Not configured</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary sm" onclick="saveBackendConfig('supabase')">💾 Save Configuration</button>
+            <button class="btn-secondary sm" onclick="testBackendConnection('supabase')">🔌 Test Connection</button>
+            <button class="btn-secondary sm" onclick="clearBackendConfig('supabase')">🗑️ Clear</button>
+          </div>
+          <div id="sbStatusMsg" style="font-size:12px;color:var(--muted);display:none;padding:8px;background:var(--surface2);border-radius:var(--rs)"></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">📄 <a href="#" onclick="showToast('SQL setup file: /docs/THERAPYLINK_SUPABASE_SETUP_SQL.txt — copy to your Supabase SQL editor');return false;" style="color:var(--gold)">View Supabase SQL Setup File →</a></div>
+        </div>
+      </div>
+
+      <!-- Firebase -->
+      <div id="backend-firebase" class="backend-panel" style="display:none">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+          <div class="setting-row"><div><div class="setting-label">Project ID</div></div><input id="fbProjectId" type="text" class="crisis-field" style="width:240px" placeholder="your-project-id"/></div>
+          <div class="setting-row"><div><div class="setting-label">API Key</div><div class="setting-desc">Public client API key only</div></div><input id="fbApiKey" type="text" class="crisis-field" style="width:240px" placeholder="AIzaSy…"/></div>
+          <div class="setting-row"><div><div class="setting-label">Auth Domain</div></div><input id="fbAuthDomain" type="text" class="crisis-field" style="width:240px" placeholder="your-project.firebaseapp.com"/></div>
+          <div class="setting-row"><div><div class="setting-label">Connection Status</div></div><span class="risk-badge" id="fbStatus">Not configured</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary sm" onclick="saveBackendConfig('firebase')">💾 Save Configuration</button>
+            <button class="btn-secondary sm" onclick="testBackendConnection('firebase')">🔌 Test Connection</button>
+            <button class="btn-secondary sm" onclick="clearBackendConfig('firebase')">🗑️ Clear</button>
+          </div>
+          <div id="fbStatusMsg" style="font-size:12px;color:var(--muted);display:none;padding:8px;background:var(--surface2);border-radius:var(--rs)"></div>
+        </div>
+      </div>
+
+      <!-- AWS -->
+      <div id="backend-aws" class="backend-panel" style="display:none">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+          <div class="setting-row"><div><div class="setting-label">API Endpoint</div></div><input id="awsEndpoint" type="url" class="crisis-field" style="width:260px" placeholder="https://api.your-domain.com"/></div>
+          <div class="setting-row"><div><div class="setting-label">Region</div></div><input id="awsRegion" type="text" class="crisis-field" style="width:160px" placeholder="eu-west-2"/></div>
+          <div class="setting-row"><div><div class="setting-label">Public Client Key</div><div class="setting-desc">If required — public key only</div></div><input id="awsClientKey" type="text" class="crisis-field" style="width:240px" placeholder="Optional"/></div>
+          <div class="setting-row"><div><div class="setting-label">Connection Status</div></div><span class="risk-badge" id="awsStatus">Not configured</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary sm" onclick="saveBackendConfig('aws')">💾 Save Configuration</button>
+            <button class="btn-secondary sm" onclick="testBackendConnection('aws')">🔌 Test Connection</button>
+            <button class="btn-secondary sm" onclick="clearBackendConfig('aws')">🗑️ Clear</button>
+          </div>
+          <div id="awsStatusMsg" style="font-size:12px;color:var(--muted);display:none;padding:8px;background:var(--surface2);border-radius:var(--rs)"></div>
+        </div>
+      </div>
+
+      <!-- Custom REST -->
+      <div id="backend-custom" class="backend-panel" style="display:none">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+          <div class="setting-row"><div><div class="setting-label">Base API URL</div></div><input id="customUrl" type="url" class="crisis-field" style="width:260px" placeholder="https://api.your-domain.com"/></div>
+          <div class="setting-row"><div><div class="setting-label">Public Client Token</div><div class="setting-desc">Public token only — never use backend-only secrets</div></div><input id="customToken" type="text" class="crisis-field" style="width:240px" placeholder="Optional"/></div>
+          <div class="setting-row"><div><div class="setting-label">Connection Status</div></div><span class="risk-badge" id="customStatus">Not configured</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary sm" onclick="saveBackendConfig('custom')">💾 Save Configuration</button>
+            <button class="btn-secondary sm" onclick="testBackendConnection('custom')">🔌 Test Connection</button>
+            <button class="btn-secondary sm" onclick="clearBackendConfig('custom')">🗑️ Clear</button>
+          </div>
+          <div id="customStatusMsg" style="font-size:12px;color:var(--muted);display:none;padding:8px;background:var(--surface2);border-radius:var(--rs)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PART 5: PATIENT PWA SHARING ── -->
+    <div class="settings-section">
+      <div class="settings-title">📤 Share Patient PWA</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Send this secure patient PWA link to the patient so they can complete check-ins, lessons, reflections, and recovery progress updates.</div>
+      <div style="background:var(--surface2);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px">Patient PWA Link</div>
+        <div style="font-size:13px;word-break:break-all;color:var(--gold);margin-bottom:10px" id="sharePwaUrl">Loading…</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Invite Code: <span id="shareInviteCode" style="font-weight:700;color:var(--text);background:var(--surface3);padding:2px 8px;border-radius:4px;font-family:monospace">—</span></div>
+        <div style="font-size:11px;color:var(--muted)">Status: <span id="shareLinkStatus" class="risk-badge LOW" style="font-size:10px">Active</span></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn-primary sm" onclick="sharePwa('copy')">📋 Copy Link</button>
+        <button class="btn-secondary sm" onclick="sharePwa('whatsapp')">💬 WhatsApp</button>
+        <button class="btn-secondary sm" onclick="sharePwa('email')">📧 Email</button>
+        <button class="btn-secondary sm" onclick="sharePwa('sms')">💬 SMS</button>
+        <button class="btn-secondary sm" onclick="sharePwa('native')" id="nativeShareBtn" style="display:none">📤 Share</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.5">In demo/local mode a safe local link is used. For live use, configure your backend URL above and the real link will update automatically.</div>
+    </div>
+
+    <!-- ── PART 6: SYNC STATUS ── -->
+    <div class="settings-section">
+      <div class="settings-title">🔄 Sync Status</div>
+      <div id="syncStatusPanel">
+        <div class="setting-row"><div><div class="setting-label">Mode</div></div><span id="syncModeBadge" class="risk-badge MISSING">Local-only</span></div>
+        <div class="setting-row"><div><div class="setting-label">Pending records</div></div><span id="syncPendingCount" style="font-size:13px;font-weight:700">0</span></div>
+        <div class="setting-row"><div><div class="setting-label">Last synced</div></div><span id="syncLastAt" style="font-size:12px;color:var(--muted)">Never</span></div>
+        <div class="setting-row"><div><div class="setting-label">Connection</div></div><span id="syncConnStatus" class="risk-badge MISSING">Not configured</span></div>
+        <div id="syncErrorMsg" style="display:none;font-size:12px;color:var(--high);padding:8px;background:rgba(239,68,68,.08);border-radius:var(--rs);margin-top:6px"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn-primary sm" onclick="manualSync()">🔄 Manual Sync</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">Patient PWA check-ins and lesson progress are saved locally first. If a backend is configured and connected, records will be queued for sync. Failed syncs preserve all patient data.</div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Detail panel -->
@@ -421,6 +580,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('settingName').value=therapistName;
   document.getElementById('settingRole').value=therapistRole;
   loadCrisisSettings();
+  loadBackendConfigUI();
+  loadShareUI();
+  updateSyncUI();
   const hr=new Date().getHours();
   document.getElementById('overviewGreeting').textContent=(hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+', '+therapistName+' 👋';
 });
@@ -440,6 +602,7 @@ function showView(v){
   const nb=document.getElementById('nav-'+v);if(nb)nb.classList.add('active');
   const titles={overview:'Therapist Monitoring Dashboard',alerts:'Support Flags',patients:'All Patients',highrisk:'Patients with Support Flags',checkins:'Daily Check-Ins',analytics:'Analytics',timeline:'Activity Timeline',notes:'Therapist Notes',settings:'Settings'};
   document.getElementById('topbarTitle').textContent=titles[v]||'Dashboard';
+  if(v==='settings'){loadBackendConfigUI();loadShareUI();updateSyncUI();}
   closeSidebar();
 }
 
@@ -528,8 +691,9 @@ function renderPatientsTable(search=''){
   else if(sortF==='name')pts.sort((a,b)=>a.name.localeCompare(b.name));
   else if(sortF==='score')pts.sort((a,b)=>(b.scores[b.scores.length-1]||0)-(a.scores[a.scores.length-1]||0));
   else pts.sort((a,b)=>(b.checkins[0]?.date||0)-(a.checkins[0]?.date||0));
-  document.getElementById('patientCount').textContent=`${pts.length} of ${PATIENTS.length} patients`;
+  document.getElementById('patientCount').textContent=!demoMode&&PATIENTS.length===0?'No patients added yet':`${pts.length} of ${PATIENTS.length} patients`;
   const tbody=document.getElementById('patientsTableBody');
+  if(!demoMode&&PATIENTS.length===0){tbody.innerHTML='<tr><td colspan="9"><div class="empty-state-block"><div class="es-icon">👥</div><div class="es-title">No patients have been added yet.</div><div class="es-sub">Demo Mode is off. Add real patients or connect a backend to start monitoring.</div></div></td></tr>';return;}
   if(!pts.length){tbody.innerHTML='<tr><td colspan="9" class="empty-state">No patients match.</td></tr>';return;}
   tbody.innerHTML=pts.map(p=>{const td=_trend(p.scores),tI=td==='up'?'↑':td==='down'?'↓':'→',tC=td==='up'?'trend-up':td==='down'?'trend-down':'trend-flat';return`<tr data-pid="${p.id}" style="cursor:pointer"><td><strong>${p.name}</strong><br/><span style="font-size:11px;color:var(--muted)">${p.condition}</span></td><td><span class="risk-badge ${p.risk}">${rLbl(p.risk)}</span></td><td>${p.scores.length?p.scores[p.scores.length-1]+'/10':'—'}</td><td>${p.sleep.length?p.sleep[p.sleep.length-1]+'h':'—'}</td><td>${p.streak}d</td><td>${p.checkins[0]?tAgo(p.checkins[0].date):'Never'}</td><td class="${tC}">${tI}</td><td>${p.flags.length?p.flags.map(f=>`<span class="pc-flag warn" style="font-size:9px">${f.replace(/_/g,' ')}</span>`).join(' '):'None'}</td><td><button class="btn-view" onclick="event.stopPropagation();openDetail('${p.id}')">Review →</button></td></tr>`;}).join('');
   tbody.querySelectorAll('tr').forEach(row=>row.addEventListener('click',()=>openDetail(row.dataset.pid)));
@@ -580,6 +744,7 @@ function ackAlert(id){const a=ALERTS.find(x=>x.id===id);if(a)a.acked=true;render
 function ackAll(){ALERTS.forEach(a=>a.acked=true);renderAlerts();showToast('All alerts acknowledged ✓');}
 
 function renderAllNotes(){
+  if(!demoMode&&PATIENTS.length===0){const el=document.getElementById('notesList');if(el)el.innerHTML='<div class="empty-state-block"><div class="es-icon">📝</div><div class="es-title">No live recovery progress has been recorded yet.</div><div class="es-sub">Demo Mode is off. Patient notes and progress will appear here when real patients are active.</div></div>';return;}
   const all=PATIENTS.flatMap(p=>p.notes.map(n=>({...n,patient:p}))).sort((a,b)=>b.date-a.date);
   const el=document.getElementById('notesList');
   if(!all.length){el.innerHTML='<p class="empty-state">No therapist notes yet.</p>';return;}
@@ -587,6 +752,302 @@ function renderAllNotes(){
 }
 
 function globalSearch(q){if(!q)return;const p=PATIENTS.find(x=>x.name.toLowerCase().includes(q.toLowerCase())||x.id.toLowerCase().includes(q.toLowerCase()));if(p)openDetail(p.id);}
+
+// ════════════════════════════════════════════════════════════════════
+// BACKEND CONFIGURATION — PART 2 + 3
+// ════════════════════════════════════════════════════════════════════
+
+const BACKEND_SETTINGS_KEY = '4p3x_backend_settings';
+
+function getDefaultBackendSettings(){
+  return {
+    mode: 'local',
+    supabase:{ url:'', anonKey:'', status:'not_configured', lastTestedAt:null, errorMessage:'' },
+    firebase:{ projectId:'', apiKey:'', authDomain:'', status:'not_configured', lastTestedAt:null, errorMessage:'' },
+    aws:{ endpoint:'', region:'', publicClientKey:'', status:'not_configured', lastTestedAt:null, errorMessage:'' },
+    custom:{ baseUrl:'', publicToken:'', status:'not_configured', lastTestedAt:null, errorMessage:'' }
+  };
+}
+
+function loadBackendSettings(){
+  return sGet(BACKEND_SETTINGS_KEY, getDefaultBackendSettings());
+}
+
+function saveBackendSettings(bs){
+  sSet(BACKEND_SETTINGS_KEY, bs);
+}
+
+function onBackendModeChange(){
+  const mode = document.getElementById('backendModeSelect').value;
+  document.querySelectorAll('.backend-panel').forEach(p=>p.style.display='none');
+  const panel = document.getElementById('backend-'+mode);
+  if(panel) panel.style.display='block';
+  const bs = loadBackendSettings();
+  bs.mode = mode;
+  saveBackendSettings(bs);
+  updateSyncUI();
+}
+
+function loadBackendConfigUI(){
+  const bs = loadBackendSettings();
+  const sel = document.getElementById('backendModeSelect');
+  if(sel) sel.value = bs.mode||'local';
+  // Show correct panel
+  document.querySelectorAll('.backend-panel').forEach(p=>p.style.display='none');
+  const panel = document.getElementById('backend-'+(bs.mode||'local'));
+  if(panel) panel.style.display='block';
+  // Populate Supabase
+  const sbUrl=document.getElementById('sbUrl');const sbKey=document.getElementById('sbKey');
+  if(sbUrl) sbUrl.value=bs.supabase.url||'';
+  if(sbKey) sbKey.value=bs.supabase.anonKey||'';
+  setStatusBadge('sbStatus', bs.supabase.status);
+  // Populate Firebase
+  const fbPid=document.getElementById('fbProjectId');const fbKey=document.getElementById('fbApiKey');const fbAuth=document.getElementById('fbAuthDomain');
+  if(fbPid) fbPid.value=bs.firebase.projectId||'';
+  if(fbKey) fbKey.value=bs.firebase.apiKey||'';
+  if(fbAuth) fbAuth.value=bs.firebase.authDomain||'';
+  setStatusBadge('fbStatus', bs.firebase.status);
+  // Populate AWS
+  const awsEp=document.getElementById('awsEndpoint');const awsReg=document.getElementById('awsRegion');const awsCk=document.getElementById('awsClientKey');
+  if(awsEp) awsEp.value=bs.aws.endpoint||'';
+  if(awsReg) awsReg.value=bs.aws.region||'';
+  if(awsCk) awsCk.value=bs.aws.publicClientKey||'';
+  setStatusBadge('awsStatus', bs.aws.status);
+  // Populate Custom
+  const cuUrl=document.getElementById('customUrl');const cuTok=document.getElementById('customToken');
+  if(cuUrl) cuUrl.value=bs.custom.baseUrl||'';
+  if(cuTok) cuTok.value=bs.custom.publicToken||'';
+  setStatusBadge('customStatus', bs.custom.status);
+}
+
+function setStatusBadge(elId, status){
+  const el=document.getElementById(elId);if(!el)return;
+  const labels={not_configured:'Not configured',configured:'Configured',testing:'Testing…',connected:'Connection passed',failed:'Connection failed'};
+  const classes={not_configured:'MISSING',configured:'MEDIUM',testing:'MEDIUM',connected:'LOW',failed:'HIGH'};
+  el.textContent=labels[status]||status;
+  el.className='risk-badge '+(classes[status]||'MISSING');
+}
+
+function saveBackendConfig(provider){
+  const bs=loadBackendSettings();
+  if(provider==='supabase'){
+    bs.supabase.url=(document.getElementById('sbUrl')||{}).value||'';
+    bs.supabase.anonKey=(document.getElementById('sbKey')||{}).value||'';
+    bs.supabase.status=bs.supabase.url&&bs.supabase.anonKey?'configured':'not_configured';
+    bs.supabase.errorMessage='';
+    setStatusBadge('sbStatus',bs.supabase.status);
+  } else if(provider==='firebase'){
+    bs.firebase.projectId=(document.getElementById('fbProjectId')||{}).value||'';
+    bs.firebase.apiKey=(document.getElementById('fbApiKey')||{}).value||'';
+    bs.firebase.authDomain=(document.getElementById('fbAuthDomain')||{}).value||'';
+    bs.firebase.status=bs.firebase.projectId&&bs.firebase.apiKey?'configured':'not_configured';
+    setStatusBadge('fbStatus',bs.firebase.status);
+  } else if(provider==='aws'){
+    bs.aws.endpoint=(document.getElementById('awsEndpoint')||{}).value||'';
+    bs.aws.region=(document.getElementById('awsRegion')||{}).value||'';
+    bs.aws.publicClientKey=(document.getElementById('awsClientKey')||{}).value||'';
+    bs.aws.status=bs.aws.endpoint?'configured':'not_configured';
+    setStatusBadge('awsStatus',bs.aws.status);
+  } else if(provider==='custom'){
+    bs.custom.baseUrl=(document.getElementById('customUrl')||{}).value||'';
+    bs.custom.publicToken=(document.getElementById('customToken')||{}).value||'';
+    bs.custom.status=bs.custom.baseUrl?'configured':'not_configured';
+    setStatusBadge('customStatus',bs.custom.status);
+  }
+  saveBackendSettings(bs);
+  showToast('Configuration saved ✓');
+  updateSyncUI();
+}
+
+function clearBackendConfig(provider){
+  const bs=loadBackendSettings();
+  if(provider==='supabase'){bs.supabase={url:'',anonKey:'',status:'not_configured',lastTestedAt:null,errorMessage:''};
+    const u=document.getElementById('sbUrl');const k=document.getElementById('sbKey');if(u)u.value='';if(k)k.value='';setStatusBadge('sbStatus','not_configured');
+  } else if(provider==='firebase'){bs.firebase={projectId:'',apiKey:'',authDomain:'',status:'not_configured',lastTestedAt:null,errorMessage:''};
+    const p=document.getElementById('fbProjectId');const a=document.getElementById('fbApiKey');const d=document.getElementById('fbAuthDomain');if(p)p.value='';if(a)a.value='';if(d)d.value='';setStatusBadge('fbStatus','not_configured');
+  } else if(provider==='aws'){bs.aws={endpoint:'',region:'',publicClientKey:'',status:'not_configured',lastTestedAt:null,errorMessage:''};
+    const e=document.getElementById('awsEndpoint');const r=document.getElementById('awsRegion');const c=document.getElementById('awsClientKey');if(e)e.value='';if(r)r.value='';if(c)c.value='';setStatusBadge('awsStatus','not_configured');
+  } else if(provider==='custom'){bs.custom={baseUrl:'',publicToken:'',status:'not_configured',lastTestedAt:null,errorMessage:''};
+    const u=document.getElementById('customUrl');const t=document.getElementById('customToken');if(u)u.value='';if(t)t.value='';setStatusBadge('customStatus','not_configured');
+  }
+  saveBackendSettings(bs);
+  showToast('Configuration cleared');
+  updateSyncUI();
+}
+
+async function testBackendConnection(provider){
+  const bs=loadBackendSettings();
+  const msgEl=document.getElementById(provider.substring(0,2)+'StatusMsg')||document.getElementById({supabase:'sbStatusMsg',firebase:'fbStatusMsg',aws:'awsStatusMsg',custom:'customStatusMsg'}[provider]);
+  const statusEl=document.getElementById({supabase:'sbStatus',firebase:'fbStatus',aws:'awsStatus',custom:'customStatus'}[provider]);
+
+  function showMsg(txt, isError){ if(!msgEl)return; msgEl.style.display='block'; msgEl.style.color=isError?'var(--high)':'var(--green)'; msgEl.textContent=txt; }
+
+  if(provider==='supabase'){
+    if(!bs.supabase.url||!bs.supabase.anonKey){showMsg('URL and Anon Public Key are required before testing.',true);return;}
+    bs.supabase.status='testing';saveBackendSettings(bs);setStatusBadge('sbStatus','testing');
+    showMsg('Testing connection…',false);
+    try{
+      // Safe lightweight test — attempt to fetch the project URL head
+      const testUrl=bs.supabase.url.replace(/\/$/','')+'/rest/v1/';
+      const res=await fetch(testUrl,{method:'GET',headers:{'apikey':bs.supabase.anonKey,'Authorization':'Bearer '+bs.supabase.anonKey},signal:AbortSignal.timeout(8000)});
+      if(res.ok||res.status===400||res.status===401||res.status===200){
+        bs.supabase.status='connected';bs.supabase.lastTestedAt=new Date().toISOString();bs.supabase.errorMessage='';
+        saveBackendSettings(bs);setStatusBadge('sbStatus','connected');
+        showMsg('✅ Connection passed — Supabase project is reachable.',false);
+      } else {
+        bs.supabase.status='failed';bs.supabase.errorMessage='HTTP '+res.status;
+        saveBackendSettings(bs);setStatusBadge('sbStatus','failed');
+        showMsg('⚠️ Connection failed: HTTP '+res.status+'. Check your project URL.',true);
+      }
+    } catch(err){
+      const msg=err.name==='TimeoutError'?'Connection timed out.':err.name==='TypeError'?'Supabase client not installed or CORS blocked. Configuration saved for setup.':'Error: '+err.message;
+      bs.supabase.status='failed';bs.supabase.errorMessage=msg;saveBackendSettings(bs);
+      setStatusBadge('sbStatus','failed');showMsg('⚠️ '+msg,true);
+    }
+  } else if(provider==='custom'){
+    const url=bs.custom.baseUrl;
+    if(!url){showMsg('Base API URL is required.',true);return;}
+    bs.custom.status='testing';saveBackendSettings(bs);setStatusBadge('customStatus','testing');
+    showMsg('Testing connection…',false);
+    try{
+      const res=await fetch(url.replace(/\/$/','')+'/health',{method:'GET',signal:AbortSignal.timeout(8000)});
+      bs.custom.status=res.ok?'connected':'failed';bs.custom.lastTestedAt=new Date().toISOString();
+      saveBackendSettings(bs);setStatusBadge('customStatus',bs.custom.status);
+      showMsg(res.ok?'✅ Health endpoint reachable.':'⚠️ Health endpoint returned HTTP '+res.status+'. CORS may be blocking.',!res.ok);
+    } catch(err){
+      bs.custom.status='failed';saveBackendSettings(bs);setStatusBadge('customStatus','failed');
+      showMsg('⚠️ Configuration saved. Live connector may not be installed yet or CORS is blocking.',true);
+    }
+  } else {
+    // Firebase / AWS — save and advise
+    saveBackendConfig(provider);
+    if(msgEl){msgEl.style.display='block';msgEl.style.color='var(--muted)';msgEl.textContent='Configuration saved. Live connector SDK not installed yet. Set up the SDK in your project to enable full sync.';}
+    showToast('Configuration saved for setup ✓');
+  }
+  updateSyncUI();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SYNC SYSTEM — PART 6
+// ════════════════════════════════════════════════════════════════════
+
+const SYNC_QUEUE_KEY = 'ap3x_sync_queue';
+
+function getSyncQueue(){ return sGet(SYNC_QUEUE_KEY,[]); }
+
+function enqueueSyncEvent(type,data){
+  const q=getSyncQueue();
+  q.push({id:Date.now()+'_'+Math.random().toString(36).slice(2),type,data,queued_at:new Date().toISOString(),status:'pending'});
+  sSet(SYNC_QUEUE_KEY,q);
+  updateSyncUI();
+}
+
+async function manualSync(){
+  const bs=loadBackendSettings();
+  const q=getSyncQueue();
+  if(q.length===0){showToast('No pending records to sync.');return;}
+  if(bs.mode==='local'||!bs[bs.mode]||bs[bs.mode].status!=='connected'){
+    showToast('No backend configured or connected. Records remain saved locally.');
+    return;
+  }
+  showToast('Sync started — '+q.length+' record(s) queued…');
+  // In backend-ready mode, records stay queued (no live SDK installed)
+  // Data is preserved — never deleted on failed sync
+  const syncErr=document.getElementById('syncErrorMsg');
+  if(syncErr){syncErr.style.display='block';syncErr.textContent='Backend-ready sync: records are queued. Install backend SDK to enable live sync.';}
+  updateSyncUI();
+}
+
+function updateSyncUI(){
+  const bs=loadBackendSettings();
+  const q=getSyncQueue();
+  const modeLbl={local:'Local-only',supabase:'Supabase',firebase:'Firebase',aws:'AWS / Amplify',custom:'Custom REST'}[bs.mode]||'Local-only';
+  const modeClass={local:'MISSING',supabase:bs.supabase.status==='connected'?'LOW':'MEDIUM',firebase:bs.firebase.status==='connected'?'LOW':'MEDIUM',aws:bs.aws.status==='connected'?'LOW':'MEDIUM',custom:bs.custom.status==='connected'?'LOW':'MEDIUM'}[bs.mode]||'MISSING';
+  const connStatus=bs.mode==='local'?'Local-only':((bs[bs.mode]&&bs[bs.mode].status)||'not_configured');
+  const connClass={not_configured:'MISSING',configured:'MEDIUM',testing:'MEDIUM',connected:'LOW',failed:'HIGH',local_only:'MISSING'}[connStatus]||'MISSING';
+  const lastSynced=bs.mode!=='local'&&bs[bs.mode]&&bs[bs.mode].lastTestedAt?new Date(bs[bs.mode].lastTestedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Never';
+
+  const setEl=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+  const setClass=(id,cls)=>{const e=document.getElementById(id);if(e)e.className='risk-badge '+cls;};
+
+  setEl('syncModeBadge',modeLbl);setClass('syncModeBadge',modeClass);
+  setEl('syncPendingCount',q.length);
+  setEl('syncLastAt',lastSynced);
+  setEl('syncConnStatus',connStatus.replace('_',' '));setClass('syncConnStatus',connClass);
+  setEl('syncOverviewMode',modeLbl);
+  setEl('syncOverviewPending',q.length+' record'+(q.length!==1?'s':''));
+  setEl('syncOverviewLast',lastSynced);
+
+  const badge=document.getElementById('syncNavBadge');
+  if(badge)badge.style.display=q.length>0?'inline':'none';
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SHARING — PART 5
+// ════════════════════════════════════════════════════════════════════
+
+function getPwaUrl(){
+  const bs=loadBackendSettings();
+  let base='';
+  if(bs.mode==='supabase'&&bs.supabase.url) base=bs.supabase.url;
+  else if(bs.mode==='custom'&&bs.custom.baseUrl) base=bs.custom.baseUrl;
+  else if(bs.mode==='aws'&&bs.aws.endpoint) base=bs.aws.endpoint;
+  else base=window.location.origin+window.location.pathname.replace(/[^/]+$/,'')+'..'+'/../ap3x/patient-pwa/index.html';
+  // Safe fallback to GitHub Pages or current deployment
+  if(!base||base==='local') base=window.location.href.replace(/clinician-demo\.html.*/,'')+'patient-pwa/index.html';
+  return base;
+}
+
+function getInviteCode(){
+  let code=sGet('4p3x_invite_code','');
+  if(!code){code='TL-'+Math.random().toString(36).slice(2,8).toUpperCase();sSet('4p3x_invite_code',code);}
+  return code;
+}
+
+function loadShareUI(){
+  const url=getPwaUrl();
+  const code=getInviteCode();
+  const urlEl=document.getElementById('sharePwaUrl');
+  if(urlEl)urlEl.textContent=url;
+  const codeEl=document.getElementById('shareInviteCode');
+  if(codeEl)codeEl.textContent=code;
+  const nativeBtn=document.getElementById('nativeShareBtn');
+  if(nativeBtn&&navigator.share)nativeBtn.style.display='inline-block';
+}
+
+function sharePwa(method){
+  const url=getPwaUrl();
+  const code=getInviteCode();
+  const msg='Hi, here is your TherapyLink™ Patient PWA access link. You can use it to complete check-ins, lessons, reflections, and recovery progress updates between sessions: '+url+' (Code: '+code+')';
+  const emailSubject='Your TherapyLink™ Patient PWA Access';
+  const emailBody='Hi,
+
+Here is your TherapyLink™ Patient PWA access link:
+
+'+url+'
+
+Invite Code: '+code+'
+
+You can use this to complete daily check-ins, mental health lessons, reflections, and recovery progress updates between sessions.
+
+TherapyLink™ supports reflection and therapist-guided monitoring. It is not an emergency service. If you feel at immediate risk or in crisis, contact local emergency services or a crisis support line immediately.
+
+Powered by 4P3X Intelligent AI™ Created by Kyzel Kreates™';
+  const smsTxt='Your TherapyLink™ Patient PWA access link: '+url+' (Code: '+code+')';
+
+  if(method==='copy'){
+    if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>showToast('PWA link copied ✓')).catch(()=>{prompt('Copy this link:',url);});}
+    else{prompt('Copy this link:',url);}
+  } else if(method==='whatsapp'){
+    window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  } else if(method==='email'){
+    window.open('mailto:?subject='+encodeURIComponent(emailSubject)+'&body='+encodeURIComponent(emailBody));
+  } else if(method==='sms'){
+    window.open('sms:?body='+encodeURIComponent(smsTxt));
+  } else if(method==='native'){
+    if(navigator.share){navigator.share({title:'TherapyLink™ Patient PWA',text:msg,url}).catch(()=>{});}
+  }
+}
 
 function openDetail(id){
   currentPatient=PATIENTS.find(p=>p.id===id);if(!currentPatient)return;const p=currentPatient;
@@ -610,6 +1071,7 @@ function addNote(pid){
   const saved=sGet('4p3x_clinician_notes',{});if(!saved[pid])saved[pid]=[];
   const note={text,date:Date.now(),by:therapistName,followUp,_saved:true};saved[pid].unshift(note);sSet('4p3x_clinician_notes',saved);
   const p=PATIENTS.find(x=>x.id===pid);if(p)p.notes.unshift(note);
+  enqueueSyncEvent('therapist_note',{patientId:pid,note:note.text,date:note.date});
   document.getElementById('newNoteInput').value='';openDetail(pid);renderAllNotes();renderTimeline();showToast('Note saved ✓');
 }
 

@@ -4,6 +4,19 @@
    Created by Kyzel Kreates · Powered by 4P3X Intelligent AI     */
 'use strict';
 
+// ── Sync Queue (backend-ready local-first) ───────────────────────
+const TL_SYNC_QUEUE_KEY = 'ap3x_sync_queue';
+function tlEnqueueSync(eventType, data) {
+  try {
+    const q = JSON.parse(localStorage.getItem(TL_SYNC_QUEUE_KEY) || '[]');
+    q.push({ id: Date.now() + '_' + Math.random().toString(36).slice(2), type: eventType, data, queued_at: new Date().toISOString(), status: 'pending', source: 'patient_pwa' });
+    localStorage.setItem(TL_SYNC_QUEUE_KEY, JSON.stringify(q));
+  } catch(e) { /* preserve data first, sync secondary */ }
+}
+function tlGetPendingCount() {
+  try { return JSON.parse(localStorage.getItem(TL_SYNC_QUEUE_KEY) || '[]').length; } catch { return 0; }
+}
+
 // ── Storage helpers ───────────────────────────────────────────────
 function sGet(k, d) { try { const v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : d; } catch { return d; } }
 function sSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -837,6 +850,8 @@ function submitCheckin() {
   const record = { id: 'ci_' + Date.now(), date: Date.now(), dateStr: new Date().toDateString(), ...ciData, risk };
   checkins.unshift(record); if (checkins.length > 365) checkins.pop();
   sSet('ap3x_patient_checkins', checkins);
+  // Queue check-in for backend-ready sync
+  tlEnqueueSync('checkin', { ...ciData, submitted_at: new Date().toISOString() });
   const todayStr = new Date().toDateString();
   if (lastCIDate !== todayStr) {
     const yest = new Date(Date.now() - 86400000).toDateString();
@@ -981,6 +996,8 @@ function completeLessonFromDetail(id, xpVal) {
     showToast('+' + xpVal + ' XP \u2014 Lesson complete! \u2713');
   }
   sSet('ap3x_lesson_progress', lessonDone);
+  // Queue lesson progress for backend-ready sync
+  tlEnqueueSync('lesson_progress', { lessonId: id, completedAt: new Date().toISOString(), xpAwarded: xpVal });
   renderProgress(); updateHeader();
   var btn = document.getElementById('ld-complete-btn');
   var lc = LESSON_CONTENT[id];
