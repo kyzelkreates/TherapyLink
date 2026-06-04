@@ -882,14 +882,14 @@ function renderLessons() {
   if (existing) existing.remove();
   document.getElementById('tab-lessons').innerHTML = `
     <div class="section-title">Mental Health Recovery Pathway</div>
-    <div class="section-sub">3 modules \xb7 15 guided support lessons</div>
+    <div class="section-sub">3 modules  &middot;  15 guided support lessons</div>
     ${CURRICULUM.map(mod => {
       const done = mod.lessons.filter(l => lessonDone[l.id]).length;
       const pct  = Math.round((done / mod.lessons.length) * 100);
       return '<div class="module-card">'
         + '<div class="module-hdr"><div class="mod-icon">' + mod.icon + '</div>'
         + '<div><div class="mod-name">' + mod.name + '</div>'
-        + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + done + '/' + mod.lessons.length + ' complete \xb7 ' + pct + '%</div></div></div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + done + '/' + mod.lessons.length + ' complete  &middot;  ' + pct + '%</div></div></div>'
         + '<div class="mod-prog"><div class="mod-prog-bar" style="width:' + pct + '%;background:' + mod.color + '"></div></div>'
         + mod.lessons.map(l =>
             '<div class="lesson-item" onclick="openLesson(\'' + l.id + '\',' + l.xp + ')" role="button" tabindex="0" style="cursor:pointer">'

@@ -1,7 +1,8 @@
 // TherapyLink™ — Patient PWA Service Worker
 // Offline-first caching for Patient Recovery Portal
+// v2 — bumped to bust old lesson cache
 
-const CACHE_NAME   = 'therapylink-patient-v1';
+const CACHE_NAME   = 'therapylink-patient-v2';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_ASSETS = [
@@ -22,25 +23,32 @@ self.addEventListener('install', event => {
   );
 });
 
-// ── Activate: purge old caches ────────────────────────────────────
+// ── Activate: purge ALL old caches ───────────────────────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+        keys.filter(k => k !== CACHE_NAME).map(k => {
+          console.log('[SW] Deleting old cache:', k);
+          return caches.delete(k);
+        })
       ))
       .then(() => self.clients.claim())
   );
 });
 
-// ── Fetch: cache-first with network fallback ──────────────────────
+// ── Fetch: NETWORK-FIRST for JS/CSS so updates land immediately ──
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   if (!event.request.url.startsWith('http')) return;
 
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      const networkFetch = fetch(event.request)
+  const url = event.request.url;
+  const isAsset = /\.(js|css|json)(\?.*)?$/.test(url);
+
+  if (isAsset) {
+    // Network-first for scripts/styles — always fresh, fallback to cache
+    event.respondWith(
+      fetch(event.request)
         .then(response => {
           if (response && response.status === 200 && response.type !== 'opaque') {
             const clone = response.clone();
@@ -48,8 +56,23 @@ self.addEventListener('fetch', event => {
           }
           return response;
         })
-        .catch(() => cached || caches.match(OFFLINE_PAGE));
-      return cached || networkFetch;
-    })
-  );
+        .catch(() => caches.match(event.request).then(cached => cached || caches.match(OFFLINE_PAGE)))
+    );
+  } else {
+    // Cache-first for HTML/images
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        const networkFetch = fetch(event.request)
+          .then(response => {
+            if (response && response.status === 200 && response.type !== 'opaque') {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+            }
+            return response;
+          })
+          .catch(() => cached || caches.match(OFFLINE_PAGE));
+        return cached || networkFetch;
+      })
+    );
+  }
 });
