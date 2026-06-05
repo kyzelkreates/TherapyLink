@@ -751,10 +751,10 @@ function closeSidebar(){
 
 function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));
-  document.getElementById('view-'+v).classList.remove('hidden');
+  const ve=document.getElementById('view-'+v);if(ve)ve.classList.remove('hidden');else{console.warn('view not found:',v);return;}
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   const nb=document.getElementById('nav-'+v);if(nb)nb.classList.add('active');
-  const titles={overview:'Therapist Monitoring Dashboard',alerts:'Support Flags',patients:'All Patients',highrisk:'Patients with Support Flags',checkins:'Daily Check-Ins',analytics:'Analytics',timeline:'Activity Timeline',notes:'Therapist Notes',settings:'Settings'};
+  const titles={overview:'Therapist Monitoring Dashboard',alerts:'Support Flags',patients:'All Patients',highrisk:'Patients with Support Flags',checkins:'Daily Check-Ins',analytics:'Analytics',timeline:'Activity Timeline',notes:'Therapist Notes',settings:'Settings',pwa:'Patient PWA Manager',backend:'Live Backend'};
   document.getElementById('topbarTitle').textContent=titles[v]||'Dashboard';
   if(v==='settings'){loadBackendConfigUI();loadShareUI();updateSyncUI();}
   closeSidebar();
