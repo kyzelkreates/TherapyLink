@@ -2,7 +2,7 @@
 // Offline-first caching for Therapist Dashboard & Patient PWA
 // v2 — bumped to bust old lesson cache
 
-const CACHE_NAME = 'therapylink-v6';
+const CACHE_NAME = 'therapylink-v7';
 const PRECACHE_ASSETS = [
   './index.html',
   './clinician-demo.html',
