@@ -50,13 +50,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .streak-xp{font-size:12px;background:rgba(0,0,0,.15);border-radius:99px;padding:2px 10px;font-weight:600}
 
 /* Bottom nav */
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -2px 8px rgba(0,0,0,.3);z-index:100}
-.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;transition:color var(--t);position:relative}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -2px 8px rgba(0,0,0,.3);z-index:600}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;transition:color var(--t);position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none}
 .nav-tab.active{color:var(--gold)}
 .nav-tab .notif-dot{position:absolute;top:7px;right:calc(50% - 14px);width:7px;height:7px;border-radius:50%;background:var(--high);border:2px solid var(--surface)}
 
 /* Tab pages */
-.tab-page{padding:18px 16px;animation:fadeIn .2s ease}
+.tab-page{padding:18px 16px;animation:fadeIn .2s ease;padding-bottom:80px}
 .tab-page.hidden{display:none!important}
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 .section-title{font-size:22px;font-weight:700;margin-bottom:3px}
@@ -682,7 +682,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   applyTheme();
   buildScales();
   buildCiDots();
-  if(!profile){showOnboarding();}else{showPortal();}
+  if(!profile){showOnboarding();}else{document.body.style.overflow='';showPortal();}
 });
 
 function applyTheme(){document.body.dataset.theme=dark?'dark':'light';}
@@ -748,7 +748,7 @@ function checkStreakAndCheckinStatus(){
 function switchTab(name){
   document.querySelectorAll('.tab-page').forEach(p=>p.classList.add('hidden'));
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.remove('hidden');
+  const _tp=document.getElementById('tab-'+name);if(_tp){_tp.classList.remove('hidden');}else{console.warn('[switchTab] missing:',name);return;}
   document.getElementById('tab-btn-'+name).classList.add('active');
 }
 
@@ -1312,6 +1312,7 @@ function openLesson(id,xpVal){
 }
 
 function closeLessonDetail(){
+  document.body.style.overflow='';
   // Save note if user typed one
   const panel=document.getElementById('lesson-detail-panel');
   if(!panel)return;

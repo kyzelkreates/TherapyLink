@@ -731,6 +731,13 @@ function renderAll(){renderStats();renderOverviewChart();renderDonut();renderUrg
 function updateClock(){const n=new Date();document.getElementById('clockEl').textContent=n.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
 function toggleTheme(){dark=!dark;sSet('4p3x_theme',dark?'dark':'light');applyTheme();}
 function applyTheme(){document.body.dataset.theme=dark?'':'light';}
+function _initHamburgerTouch(){
+  const hbEl=document.getElementById('hamburger');
+  if(hbEl&&!hbEl._touchBound){
+    hbEl._touchBound=true;
+    hbEl.addEventListener('touchstart',function(e){e.preventDefault();toggleSidebar();},{passive:false});
+  }
+}
 function toggleSidebar(){
   const sb=document.getElementById('sidebar');
   const ov=document.getElementById('overlay');
@@ -742,6 +749,7 @@ function toggleSidebar(){
   document.body.style.overflow=isOpen?'hidden':'';
 }
 function closeSidebar(){
+  document.body.style.overflow='';
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
   const hb=document.getElementById('hamburger');
@@ -756,7 +764,7 @@ function showView(v){
   const nb=document.getElementById('nav-'+v);if(nb)nb.classList.add('active');
   const titles={overview:'Therapist Monitoring Dashboard',alerts:'Support Flags',patients:'All Patients',highrisk:'Patients with Support Flags',checkins:'Daily Check-Ins',analytics:'Analytics',timeline:'Activity Timeline',notes:'Therapist Notes',settings:'Settings',pwa:'Patient PWA Manager',backend:'Live Backend'};
   document.getElementById('topbarTitle').textContent=titles[v]||'Dashboard';
-  if(v==='settings'){loadBackendConfigUI();loadShareUI();updateSyncUI();}
+  if(v==='settings'){loadBackendConfigUI();loadShareUI();updateSyncUI();}if(v==='pwa'){loadPwaList();}if(v==='backend'){loadBackendConfigUI();}
   closeSidebar();
 }
 
@@ -1604,6 +1612,8 @@ showView=function(v){
   if(v==='pwa'){renderPwaView();renderSyncHistory();}
   if(v==='backend'){renderBackendView();}
 };
+
+window.addEventListener('load',_initHamburgerTouch);
 
 </script>
 </body>
