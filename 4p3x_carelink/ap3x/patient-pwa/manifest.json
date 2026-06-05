@@ -1,11 +1,11 @@
 {
-  "name": "TherapyLink™",
+  "name": "TherapyLink OS™",
   "short_name": "TherapyLink",
-  "description": "Therapist dashboard and patient mental health PWA powered by 4P3X Intelligent AI™. Created by Kyzel Kreates™.",
+  "description": "Patient Recovery PWA + Therapist Monitoring Dashboard — Powered by 4P3X Intelligent AI™",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0a0a0a",
+  "background_color": "#1a1a1a",
   "theme_color": "#c9a84c",
   "categories": [
     "health",
@@ -14,51 +14,52 @@
   ],
   "icons": [
     {
-      "src": "../../icons/tl-72.png",
+      "src": "../icons/tl-72.png",
       "sizes": "72x72",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable any"
     },
     {
-      "src": "../../icons/tl-96.png",
+      "src": "../icons/tl-96.png",
       "sizes": "96x96",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable any"
     },
     {
-      "src": "../../icons/tl-128.png",
+      "src": "../icons/tl-128.png",
       "sizes": "128x128",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable any"
     },
     {
-      "src": "../../icons/tl-144.png",
+      "src": "../icons/tl-144.png",
       "sizes": "144x144",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable any"
     },
     {
-      "src": "../../icons/tl-152.png",
+      "src": "../icons/tl-152.png",
       "sizes": "152x152",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable any"
     },
     {
-      "src": "../../icons/tl-180.png",
-      "sizes": "180x180",
-      "type": "image/png"
-    },
-    {
-      "src": "../../icons/tl-192.png",
+      "src": "../icons/tl-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable any"
     },
     {
-      "src": "../../icons/tl-384.png",
+      "src": "../icons/tl-384.png",
       "sizes": "384x384",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable any"
     },
     {
-      "src": "../../icons/tl-512.png",
+      "src": "../icons/tl-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable any"
     }
   ],
   "shortcuts": [
@@ -67,21 +68,37 @@
       "short_name": "Check-In",
       "description": "Complete today's wellbeing check-in",
       "url": "./index.html?tab=checkin",
-      "icons": [{"src": "../../icons/tl-96.png", "sizes": "96x96"}]
+      "icons": [
+        {
+          "src": "../../icons/tl-96.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Recovery Pathway",
       "short_name": "Lessons",
       "description": "Continue your mental health lessons",
       "url": "./index.html?tab=lessons",
-      "icons": [{"src": "../../icons/tl-96.png", "sizes": "96x96"}]
+      "icons": [
+        {
+          "src": "../../icons/tl-96.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "My Progress",
       "short_name": "Progress",
       "description": "View your recovery progress",
       "url": "./index.html?tab=progress",
-      "icons": [{"src": "../../icons/tl-96.png", "sizes": "96x96"}]
+      "icons": [
+        {
+          "src": "../../icons/tl-96.png",
+          "sizes": "96x96"
+        }
+      ]
     }
-  ]
+  ],
+  "screenshots": []
 }

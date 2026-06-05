@@ -1,0 +1,501 @@
+================================================================================
+TherapyLink OS™ — Live Backend Supabase Setup
+Powered by 4P3X Intelligent AI™  |  Created by Kyzel Kreates™
+================================================================================
+
+IMPORTANT SECURITY NOTICE
+──────────────────────────
+NEVER place backend-only secrets in frontend code.
+The following values must ONLY exist in your server, backend functions,
+Supabase Edge Functions, or environment variables:
+
+  ❌ NEVER in frontend:
+     - service_role key
+     - database password / DB connection string
+     - JWT secret
+     - Webhook secrets
+     - OpenAI / GROQ / Anthropic API keys
+     - Stripe secret keys
+     - Any admin credentials
+
+  ✅ Safe to use in frontend (client-side):
+     - Supabase project URL
+     - Supabase anon (public) key
+     - Firebase web API key (public)
+     - Public REST API tokens (read-only, non-privileged)
+
+The TherapyLink OS™ dashboard enforces this by blocking known secret
+patterns before saving any backend configuration.
+
+================================================================================
+SAFE EXECUTION ORDER
+================================================================================
+
+  1. Extensions
+  2. Tables (with columns + constraints)
+  3. Indexes
+  4. Functions
+  5. Triggers
+  6. Enable RLS
+  7. RLS Policies
+  8. Verification queries
+
+================================================================================
+STEP 1 — EXTENSIONS
+================================================================================
+
+-- UUID generation (usually pre-enabled in Supabase)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- pgcrypto for token generation (optional)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+================================================================================
+STEP 2 — TABLES
+================================================================================
+
+-- ── Therapists ───────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS therapists (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  dashboard_id          TEXT UNIQUE NOT NULL,  -- e.g. TL-THERAPIST-0001
+  display_name          TEXT NOT NULL,
+  email                 TEXT,
+  role_title            TEXT DEFAULT 'Therapist',
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW(),
+  status                TEXT DEFAULT 'active' CHECK (status IN ('active','paused','archived')),
+  auth_user_id          UUID REFERENCES auth.users(id) ON DELETE SET NULL
+);
+COMMENT ON TABLE therapists IS 'Therapist dashboard accounts. Row-level security enforced.';
+
+
+-- ── Patients ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS patients (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  therapist_id          UUID REFERENCES therapists(id) ON DELETE CASCADE,
+  display_name          TEXT NOT NULL,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW(),
+  status                TEXT DEFAULT 'active' CHECK (status IN ('active','paused','archived')),
+  consent_status        TEXT DEFAULT 'not_given' CHECK (consent_status IN ('not_given','given','expired')),
+  disclaimer_accepted   BOOLEAN DEFAULT FALSE,
+  notes_summary         JSONB DEFAULT '[]'::JSONB
+);
+COMMENT ON TABLE patients IS 'Patient records linked to a therapist.';
+
+
+-- ── Patient PWAs ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS patient_pwas (
+  id                        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  patient_pwa_id            TEXT UNIQUE NOT NULL,  -- e.g. TL-PWA-0001
+  patient_access_code       TEXT UNIQUE NOT NULL,  -- e.g. TL-ACCESS-0001
+  patient_display_name      TEXT NOT NULL,
+  assigned_therapist_id     TEXT NOT NULL,          -- TL-THERAPIST-0001
+  therapist_id              UUID REFERENCES therapists(id) ON DELETE SET NULL,
+  patient_id                UUID REFERENCES patients(id) ON DELETE SET NULL,
+  created_at                TIMESTAMPTZ DEFAULT NOW(),
+  updated_at                TIMESTAMPTZ DEFAULT NOW(),
+  status                    TEXT DEFAULT 'active' CHECK (status IN ('active','paused','archived')),
+  demo_mode                 BOOLEAN DEFAULT FALSE,
+  live_mode_ready           BOOLEAN DEFAULT FALSE,
+  backend_profile_id        TEXT,
+  sync_status               TEXT DEFAULT 'idle' CHECK (sync_status IN ('idle','pending','syncing','success','failed','offline')),
+  last_sync_at              TIMESTAMPTZ,
+  install_url               TEXT,
+  assigned_pathway          INT DEFAULT 1,
+  pathway_name              TEXT,
+  consent_status            TEXT DEFAULT 'not_given',
+  emergency_disclaimer_accepted BOOLEAN DEFAULT FALSE,
+  lessons_completed         INT DEFAULT 0,
+  total_lessons             INT DEFAULT 15,
+  last_active_at            TIMESTAMPTZ,
+  xp                        INT DEFAULT 0,
+  total_checkins            INT DEFAULT 0,
+  last_checkin_at           TIMESTAMPTZ,
+  average_anxiety           NUMERIC(4,2),
+  average_mood              NUMERIC(4,2),
+  calming_exercises_used    INT DEFAULT 0
+);
+COMMENT ON TABLE patient_pwas IS 'One record per Patient PWA instance. Unique TL-PWA-XXXX ID and TL-ACCESS-XXXX code.';
+
+
+-- ── Backend Profiles ─────────────────────────────────────────────────────────
+-- NOTE: Only public/client-safe config stored here.
+-- NEVER store service_role keys, passwords, or private keys.
+CREATE TABLE IF NOT EXISTS backend_profiles (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  backend_profile_id    TEXT UNIQUE NOT NULL,  -- e.g. TL-BACKEND-0001
+  therapist_id          UUID REFERENCES therapists(id) ON DELETE CASCADE,
+  provider              TEXT NOT NULL CHECK (provider IN ('local','supabase','firebase','aws','rest')),
+  label                 TEXT NOT NULL,
+  project_url           TEXT,    -- public Supabase project URL
+  public_anon_key       TEXT,    -- Supabase anon key ONLY (never service_role)
+  api_base_url          TEXT,    -- REST / AWS endpoint
+  region                TEXT,
+  public_client_key     TEXT,    -- public key only
+  public_token          TEXT,    -- public token only
+  status                TEXT DEFAULT 'not_configured'
+                        CHECK (status IN ('not_configured','configured','testing','connected','failed')),
+  last_tested_at        TIMESTAMPTZ,
+  error_message         TEXT,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+COMMENT ON TABLE backend_profiles IS 'Public-facing backend configuration. No private keys stored.';
+
+
+-- ── PWA Sync Events ───────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pwa_sync_events (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  batch_id              TEXT,           -- e.g. TL-SYNC-0001
+  patient_pwa_id        TEXT NOT NULL REFERENCES patient_pwas(patient_pwa_id) ON DELETE CASCADE,
+  source                TEXT NOT NULL CHECK (source IN ('patient_pwa','dashboard')),
+  event_type            TEXT NOT NULL,  -- e.g. 'lesson_progress', 'checkin', 'coping_used'
+  payload               JSONB DEFAULT '{}'::JSONB,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  processed             BOOLEAN DEFAULT FALSE,
+  processed_at          TIMESTAMPTZ
+);
+COMMENT ON TABLE pwa_sync_events IS 'Audit log of all sync events from PWA and dashboard.';
+
+
+-- ── Patient Progress ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS patient_progress (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  patient_pwa_id        TEXT NOT NULL REFERENCES patient_pwas(patient_pwa_id) ON DELETE CASCADE,
+  lesson_id             TEXT NOT NULL,
+  module_id             INT,
+  completed             BOOLEAN DEFAULT FALSE,
+  completed_at          TIMESTAMPTZ,
+  xp_earned             INT DEFAULT 0,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(patient_pwa_id, lesson_id)
+);
+COMMENT ON TABLE patient_progress IS 'Lesson completion per Patient PWA.';
+
+
+-- ── Patient Check-Ins ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS patient_checkins (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  patient_pwa_id        TEXT NOT NULL REFERENCES patient_pwas(patient_pwa_id) ON DELETE CASCADE,
+  checked_in_at         TIMESTAMPTZ DEFAULT NOW(),
+  mood                  INT CHECK (mood BETWEEN 1 AND 10),
+  anxiety               INT CHECK (anxiety BETWEEN 1 AND 10),
+  sleep                 INT CHECK (sleep BETWEEN 1 AND 10),
+  energy                INT CHECK (energy BETWEEN 1 AND 10),
+  overwhelmed           TEXT,
+  concentration         TEXT,
+  connection            TEXT,
+  support_needed        BOOLEAN DEFAULT FALSE,
+  coping_used           JSONB DEFAULT '[]'::JSONB,
+  triggers              JSONB DEFAULT '[]'::JSONB,
+  note                  TEXT,
+  risk_level            TEXT DEFAULT 'LOW' CHECK (risk_level IN ('LOW','MEDIUM','HIGH','CRITICAL','MISSING_DATA')),
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+COMMENT ON TABLE patient_checkins IS 'Daily check-in submissions from Patient PWA.';
+
+
+-- ── Patient Notes ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS patient_notes (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  patient_pwa_id        TEXT REFERENCES patient_pwas(patient_pwa_id) ON DELETE CASCADE,
+  therapist_id          UUID REFERENCES therapists(id) ON DELETE SET NULL,
+  note_text             TEXT NOT NULL,
+  note_type             TEXT DEFAULT 'therapist' CHECK (note_type IN ('therapist','patient','system')),
+  visibility            TEXT DEFAULT 'therapist_only' CHECK (visibility IN ('therapist_only','shared')),
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+COMMENT ON TABLE patient_notes IS 'Clinical notes from therapist or patient submissions.';
+
+
+-- ── PWA Sync Queue ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pwa_sync_queue (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  queue_item_id         TEXT UNIQUE NOT NULL,
+  patient_pwa_id        TEXT NOT NULL REFERENCES patient_pwas(patient_pwa_id) ON DELETE CASCADE,
+  event_type            TEXT NOT NULL,
+  payload               JSONB DEFAULT '{}'::JSONB,
+  queued_at             TIMESTAMPTZ DEFAULT NOW(),
+  status                TEXT DEFAULT 'pending' CHECK (status IN ('pending','processing','success','failed','backend_ready')),
+  attempts              INT DEFAULT 0,
+  last_attempted_at     TIMESTAMPTZ,
+  error_message         TEXT,
+  processed_at          TIMESTAMPTZ
+);
+COMMENT ON TABLE pwa_sync_queue IS 'Queue of PWA updates awaiting backend sync. Items removed on success.';
+
+
+================================================================================
+STEP 3 — INDEXES
+================================================================================
+
+CREATE INDEX IF NOT EXISTS idx_patient_pwas_therapist   ON patient_pwas(assigned_therapist_id);
+CREATE INDEX IF NOT EXISTS idx_patient_pwas_status      ON patient_pwas(status);
+CREATE INDEX IF NOT EXISTS idx_patient_pwas_access_code ON patient_pwas(patient_access_code);
+CREATE INDEX IF NOT EXISTS idx_checkins_pwa_id          ON patient_checkins(patient_pwa_id);
+CREATE INDEX IF NOT EXISTS idx_checkins_at              ON patient_checkins(checked_in_at DESC);
+CREATE INDEX IF NOT EXISTS idx_progress_pwa_id          ON patient_progress(patient_pwa_id);
+CREATE INDEX IF NOT EXISTS idx_sync_events_pwa          ON pwa_sync_events(patient_pwa_id);
+CREATE INDEX IF NOT EXISTS idx_sync_queue_status        ON pwa_sync_queue(status);
+CREATE INDEX IF NOT EXISTS idx_sync_queue_pwa           ON pwa_sync_queue(patient_pwa_id);
+CREATE INDEX IF NOT EXISTS idx_notes_pwa                ON patient_notes(patient_pwa_id);
+
+
+================================================================================
+STEP 4 — FUNCTIONS
+================================================================================
+
+-- ── Auto-update updated_at timestamp ─────────────────────────────────────────
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ── Sync summary to patient_pwas after new checkin ───────────────────────────
+CREATE OR REPLACE FUNCTION sync_checkin_summary()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE patient_pwas
+  SET
+    total_checkins  = (SELECT COUNT(*) FROM patient_checkins WHERE patient_pwa_id = NEW.patient_pwa_id),
+    last_checkin_at = NEW.checked_in_at,
+    average_anxiety = (SELECT AVG(anxiety) FROM patient_checkins WHERE patient_pwa_id = NEW.patient_pwa_id AND anxiety IS NOT NULL),
+    average_mood    = (SELECT AVG(mood) FROM patient_checkins WHERE patient_pwa_id = NEW.patient_pwa_id AND mood IS NOT NULL),
+    updated_at      = NOW()
+  WHERE patient_pwa_id = NEW.patient_pwa_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ── Sync lesson progress to patient_pwas after completion ────────────────────
+CREATE OR REPLACE FUNCTION sync_lesson_summary()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE patient_pwas
+  SET
+    lessons_completed = (SELECT COUNT(*) FROM patient_progress WHERE patient_pwa_id = NEW.patient_pwa_id AND completed = TRUE),
+    xp                = (SELECT COALESCE(SUM(xp_earned),0) FROM patient_progress WHERE patient_pwa_id = NEW.patient_pwa_id),
+    last_active_at    = NOW(),
+    updated_at        = NOW()
+  WHERE patient_pwa_id = NEW.patient_pwa_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+================================================================================
+STEP 5 — TRIGGERS
+================================================================================
+
+-- updated_at triggers
+CREATE TRIGGER trg_therapists_updated_at
+  BEFORE UPDATE ON therapists
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_patients_updated_at
+  BEFORE UPDATE ON patients
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_patient_pwas_updated_at
+  BEFORE UPDATE ON patient_pwas
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_backend_profiles_updated_at
+  BEFORE UPDATE ON backend_profiles
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_notes_updated_at
+  BEFORE UPDATE ON patient_notes
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Summary sync triggers
+CREATE TRIGGER trg_sync_checkin_summary
+  AFTER INSERT ON patient_checkins
+  FOR EACH ROW EXECUTE FUNCTION sync_checkin_summary();
+
+CREATE TRIGGER trg_sync_lesson_summary
+  AFTER INSERT OR UPDATE ON patient_progress
+  FOR EACH ROW EXECUTE FUNCTION sync_lesson_summary();
+
+
+================================================================================
+STEP 6 — ENABLE ROW LEVEL SECURITY (RLS)
+================================================================================
+
+ALTER TABLE therapists         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patients           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patient_pwas       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backend_profiles   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pwa_sync_events    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patient_progress   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patient_checkins   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patient_notes      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pwa_sync_queue     ENABLE ROW LEVEL SECURITY;
+
+
+================================================================================
+STEP 7 — RLS POLICIES
+================================================================================
+
+-- ── Therapists: own record only ───────────────────────────────────────────────
+CREATE POLICY "Therapists can view own record"
+  ON therapists FOR SELECT
+  USING (auth.uid() = auth_user_id);
+
+CREATE POLICY "Therapists can update own record"
+  ON therapists FOR UPDATE
+  USING (auth.uid() = auth_user_id);
+
+-- ── Patient PWAs: therapist owns the PWA records ──────────────────────────────
+CREATE POLICY "Therapist can view own patient PWAs"
+  ON patient_pwas FOR SELECT
+  USING (
+    assigned_therapist_id IN (
+      SELECT dashboard_id FROM therapists WHERE auth_user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Therapist can create patient PWAs"
+  ON patient_pwas FOR INSERT
+  WITH CHECK (
+    assigned_therapist_id IN (
+      SELECT dashboard_id FROM therapists WHERE auth_user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Therapist can update own patient PWAs"
+  ON patient_pwas FOR UPDATE
+  USING (
+    assigned_therapist_id IN (
+      SELECT dashboard_id FROM therapists WHERE auth_user_id = auth.uid()
+    )
+  );
+
+-- ── Check-ins: therapist can read, Patient PWA can insert ────────────────────
+-- NOTE: For patient insert, use a Supabase Edge Function or service role
+--       on the server side. The patient writes locally first, then syncs
+--       via the backend-ready sync system.
+CREATE POLICY "Therapist can view check-ins for own patients"
+  ON patient_checkins FOR SELECT
+  USING (
+    patient_pwa_id IN (
+      SELECT patient_pwa_id FROM patient_pwas
+      WHERE assigned_therapist_id IN (
+        SELECT dashboard_id FROM therapists WHERE auth_user_id = auth.uid()
+      )
+    )
+  );
+
+-- ── Progress: therapist can read ──────────────────────────────────────────────
+CREATE POLICY "Therapist can view lesson progress for own patients"
+  ON patient_progress FOR SELECT
+  USING (
+    patient_pwa_id IN (
+      SELECT patient_pwa_id FROM patient_pwas
+      WHERE assigned_therapist_id IN (
+        SELECT dashboard_id FROM therapists WHERE auth_user_id = auth.uid()
+      )
+    )
+  );
+
+-- ── Notes: therapist can read/write own notes ─────────────────────────────────
+CREATE POLICY "Therapist can read own notes"
+  ON patient_notes FOR SELECT
+  USING (therapist_id IN (SELECT id FROM therapists WHERE auth_user_id = auth.uid()));
+
+CREATE POLICY "Therapist can create notes"
+  ON patient_notes FOR INSERT
+  WITH CHECK (therapist_id IN (SELECT id FROM therapists WHERE auth_user_id = auth.uid()));
+
+-- ── Backend profiles: therapist owns ─────────────────────────────────────────
+CREATE POLICY "Therapist can manage own backend profiles"
+  ON backend_profiles FOR ALL
+  USING (therapist_id IN (SELECT id FROM therapists WHERE auth_user_id = auth.uid()));
+
+-- ── Sync queue: therapist can manage ─────────────────────────────────────────
+CREATE POLICY "Therapist can manage sync queue for own patients"
+  ON pwa_sync_queue FOR ALL
+  USING (
+    patient_pwa_id IN (
+      SELECT patient_pwa_id FROM patient_pwas
+      WHERE assigned_therapist_id IN (
+        SELECT dashboard_id FROM therapists WHERE auth_user_id = auth.uid()
+      )
+    )
+  );
+
+
+================================================================================
+STEP 8 — VERIFICATION QUERIES
+================================================================================
+
+-- Run these to confirm setup was successful:
+
+SELECT table_name, row_security
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name IN (
+    'therapists','patients','patient_pwas','backend_profiles',
+    'pwa_sync_events','patient_progress','patient_checkins',
+    'patient_notes','pwa_sync_queue'
+  )
+ORDER BY table_name;
+
+-- Confirm RLS is enabled on all patient tables:
+SELECT tablename, rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename IN ('patient_pwas','patient_checkins','patient_progress','patient_notes');
+
+-- Confirm triggers exist:
+SELECT trigger_name, event_object_table
+FROM information_schema.triggers
+WHERE trigger_schema = 'public'
+ORDER BY event_object_table, trigger_name;
+
+
+================================================================================
+FRONTEND INTEGRATION NOTES
+================================================================================
+
+In your .env / backend config (SERVER SIDE ONLY):
+  SUPABASE_SERVICE_ROLE_KEY = *** NEVER EXPOSE THIS TO FRONTEND ***
+  SUPABASE_JWT_SECRET       = *** NEVER EXPOSE THIS TO FRONTEND ***
+
+In your frontend config (TherapyLink OS™ dashboard - SAFE):
+  SUPABASE_URL      = https://your-project.supabase.co
+  SUPABASE_ANON_KEY = eyJhbGci...  (public anon key only)
+
+The TherapyLink OS™ dashboard uses only:
+  - publicAnonKey (anon key — read-only by default)
+  - projectUrl    (public project URL)
+
+All patient data writes from the PWA are:
+  1. Written locally first (offline-first, SSOT via localStorage)
+  2. Queued in the sync queue
+  3. Flushed to Supabase via the sync system when online
+  4. For secure writes: use Supabase Edge Functions with service_role
+     on the SERVER side — never expose service_role to the client.
+
+================================================================================
+SAFETY DISCLAIMER (Required in all TherapyLink OS™ deployments)
+================================================================================
+
+TherapyLink OS™ is a support and coordination tool. It does not replace
+a qualified therapist, clinical judgement, emergency services, safeguarding
+duties, or medical advice. All risk indicators are informational only and
+must be reviewed by a qualified clinician.
+
+For urgent risk: "If you are in immediate danger or crisis, contact
+emergency services or a trusted support service immediately."
+
+================================================================================
+END OF SETUP DOCUMENT
+TherapyLink OS™  |  Powered by 4P3X Intelligent AI™  |  Created by Kyzel Kreates™
+================================================================================

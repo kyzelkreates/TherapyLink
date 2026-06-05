@@ -258,8 +258,43 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .ob-ready-title{font-size:26px;font-weight:800;text-align:center;margin-bottom:8px}
 .ob-ready-sub{font-size:14px;color:var(--muted);text-align:center;margin-bottom:20px}
 </style>
+<script src="../shared/pwa-manager.js"></script>
 </head>
 <body data-theme="dark">
+
+<!-- PWA CONNECT SCREEN -->
+<div id="pwaConnectScreen" style="display:none">
+  <div style="max-width:440px;margin:60px auto;padding:20px">
+    <div style="text-align:center;margin-bottom:24px">
+      <img src="../../icons/tl-192.png" alt="TherapyLink OS" style="width:64px;height:64px;border-radius:14px;margin-bottom:12px"/>
+      <div style="font-size:22px;font-weight:900;color:var(--gold)">TherapyLink OS&#x2122;</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">Connect Your Patient PWA</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:12px;padding:24px;border:1px solid var(--border)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:16px">Enter your access code</div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">ACCESS CODE</div>
+        <input id="connectAccessCode" type="text" placeholder="e.g. TL-ACCESS-0001"
+          style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-size:14px;font-family:monospace;letter-spacing:.05em;text-transform:uppercase"
+          oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+      <button onclick="submitPwaConnect()"
+        style="width:100%;background:var(--gold);color:#1a1a1a;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:800;cursor:pointer">
+        Connect PWA
+      </button>
+      <div id="connectMsg" style="display:none;margin-top:10px;font-size:12px;padding:8px 12px;border-radius:6px"></div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <button onclick="useDemoMode()"
+          style="width:100%;background:transparent;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--muted);cursor:pointer">
+          Continue in Demo Mode
+        </button>
+      </div>
+    </div>
+    <div style="margin-top:16px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.25);border-radius:8px;padding:12px 14px;font-size:11px;color:#fca5a5;line-height:1.6">
+      &#x26A0;&#xFE0F; TherapyLink OS&#x2122; is a support and coordination tool only. It does not replace a qualified therapist, emergency services, safeguarding duties, or medical advice. If you are in immediate danger, contact emergency services immediately.
+    </div>
+  </div>
+</div>
 
 <!-- ══ ONBOARDING ══ -->
 <div id="onboarding" class="ob-wrap" style="display:none">
@@ -347,6 +382,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <!-- ══ MAIN PORTAL ══ -->
 <div id="portal-root" style="display:none">
   <header class="ap3x-header">
+    <div id="pwaStatusBar" style="display:none;margin:8px 16px 0;padding:8px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);font-size:11px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><span id="pwaStatusId" style="font-family:monospace;color:var(--gold)"></span><span id="pwaStatusSync" style="color:var(--muted)"></span><button onclick="patientSyncNow()" style="background:transparent;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;color:var(--muted);cursor:pointer">Sync</button></div>
     <div class="header-brand">
       <div class="brand-dot"></div>
       <div><div class="brand-name">TherapyLink™</div><div class="brand-sub" id="portal-brand-sub">My Recovery Support</div></div>
@@ -1357,6 +1393,108 @@ function renderProgress(){
 }
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),2800);}
+</script>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// PATIENT PWA — Connect Screen + Sync Status JS
+// Added to patient-demo.html
+// ════════════════════════════════════════════════════════════════════
+'use strict';
+
+// ── Override boot to check for linked PWA ID ──────────────────────
+var _origDOMReady = null;
+
+window.addEventListener('DOMContentLoaded', function() {
+  // pwa-manager.js already loaded in <head>
+  // If demo mode is ON — skip connect screen, go normal boot
+  var isDemo = (function(){try{var v=localStorage.getItem('4p3x_demo_mode');return v===null?true:JSON.parse(v);}catch{return true;}})();
+  if(isDemo){
+    // Demo mode — go straight to onboarding/portal as normal
+    showPwaStatusBar(null, true);
+    return;
+  }
+  // Live mode — check if this device already has a linked PWA ID
+  if(typeof TLPwaManager !== 'undefined'){
+    var linked = TLPwaManager.getLinkedRecord();
+    if(linked && linked.status === 'active'){
+      // Already linked — proceed normally, show status bar
+      showPwaStatusBar(linked, false);
+      return;
+    }
+  }
+  // No linked ID — show connect screen
+  document.getElementById('pwaConnectScreen').style.display = 'block';
+  document.getElementById('onboarding').style.display = 'none';
+  document.getElementById('portal-root').style.display = 'none';
+}, true); // capture = true so this runs first
+
+function submitPwaConnect(){
+  var code = (document.getElementById('connectAccessCode') || {}).value || '';
+  var msgEl = document.getElementById('connectMsg');
+  if(!code){
+    if(msgEl){msgEl.style.display='block';msgEl.style.background='rgba(220,38,38,.1)';msgEl.style.color='#fca5a5';msgEl.textContent='Please enter your access code.';}
+    return;
+  }
+  if(typeof TLPwaManager === 'undefined'){
+    if(msgEl){msgEl.style.display='block';msgEl.style.background='rgba(220,38,38,.1)';msgEl.style.color='#fca5a5';msgEl.textContent='PWA Manager not available. Please refresh and try again.';}
+    return;
+  }
+  var result = TLPwaManager.linkByAccessCode(code);
+  if(!result.ok){
+    if(msgEl){msgEl.style.display='block';msgEl.style.background='rgba(220,38,38,.1)';msgEl.style.color='#fca5a5';msgEl.textContent=result.error||'Invalid access code.';}
+    return;
+  }
+  // Success — hide connect screen, show portal
+  document.getElementById('pwaConnectScreen').style.display = 'none';
+  showPwaStatusBar(result.record, false);
+  // Proceed as if DOMContentLoaded completed normally
+  if(typeof profile !== 'undefined' && profile){showPortal();}
+  else{showOnboarding();}
+}
+
+function useDemoMode(){
+  try{localStorage.setItem('4p3x_demo_mode', JSON.stringify(true));}catch{}
+  document.getElementById('pwaConnectScreen').style.display = 'none';
+  showPwaStatusBar(null, true);
+  if(typeof profile !== 'undefined' && profile){showPortal();}
+  else{showOnboarding();}
+}
+
+function showPwaStatusBar(record, isDemo){
+  var bar = document.getElementById('pwaStatusBar');
+  var idEl = document.getElementById('pwaStatusId');
+  var syncEl = document.getElementById('pwaStatusSync');
+  if(!bar) return;
+  bar.style.display = 'flex';
+  if(isDemo){
+    if(idEl) idEl.textContent = 'Demo Mode';
+    if(syncEl) syncEl.textContent = 'Local data only — no backend sync';
+  } else if(record){
+    if(idEl) idEl.textContent = record.patientPwaId;
+    var hasBe = record.backendProfileId && record.liveModeReady;
+    if(syncEl) syncEl.textContent = hasBe ? 'Live sync available' : 'Local mode — data saved on this device';
+  }
+}
+
+function patientSyncNow(){
+  if(typeof TLPwaManager === 'undefined') return;
+  var linked = TLPwaManager.getLinkedRecord();
+  if(!linked){
+    if(typeof showToast === 'function') showToast('No linked Patient PWA.');
+    return;
+  }
+  if(typeof showToast === 'function') showToast('Syncing\u2026');
+  TLPwaManager.syncPatientPwa(linked.patientPwaId).then(function(result){
+    var syncEl = document.getElementById('pwaStatusSync');
+    var now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    if(syncEl) syncEl.textContent = result.ok ? ('Synced at ' + now) : ('Sync issue: ' + (result.error||''));
+    if(typeof showToast === 'function'){
+      showToast(result.ok ? 'Sync complete' : ('Sync issue: ' + (result.error||'')));
+    }
+  });
+}
+
 </script>
 </body>
 </html>
