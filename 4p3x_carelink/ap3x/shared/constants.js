@@ -67,3 +67,104 @@ export const BRAND = {
   powered:   'Powered by 4P3X Intelligent AI — Created by Kyzel Kreates',
   version:   '2.0.0'
 };
+
+// ── Patient PWA Manager keys (added: Live Mode + PWA ID upgrade) ──
+export const PWA_KEYS = {
+  PATIENT_PWAS:       'tl_patient_pwas',        // all Patient PWA records
+  PATIENT_PWA_COUNT:  'tl_patient_pwa_counter', // autoincrement counter
+  BACKEND_PROFILES:   'tl_backend_profiles',     // saved backend configs
+  BACKEND_COUNT:      'tl_backend_profile_counter',
+  SYNC_BATCHES:       'tl_sync_batches',         // sync history log
+  SYNC_BATCH_COUNT:   'tl_sync_batch_counter',
+  ACTIVE_PWA_ID:      'tl_active_pwa_id',        // currently open PWA (patient side)
+  LINKED_PWA_ID:      'tl_linked_pwa_id',        // patient PWA: linked patientPwaId
+};
+
+// ── ID generators — consistent TL-PWA-XXXX format ─────────────────
+export function generatePatientPwaId(counter) {
+  return 'TL-PWA-' + String(counter).padStart(4, '0');
+}
+
+export function generateAccessCode(counter) {
+  return 'TL-ACCESS-' + String(counter).padStart(4, '0');
+}
+
+export function generateBackendProfileId(counter) {
+  return 'TL-BACKEND-' + String(counter).padStart(4, '0');
+}
+
+export function generateSyncBatchId(counter) {
+  return 'TL-SYNC-' + String(counter).padStart(4, '0');
+}
+
+// ── Default Patient PWA record ────────────────────────────────────
+export function makePatientPwaRecord({ patientDisplayName = '', counter = 1, therapistId = 'TL-THERAPIST-0001', demoMode = false } = {}) {
+  const now = new Date().toISOString();
+  const c = parseInt(counter, 10) || 1;
+  return {
+    patientPwaId:              generatePatientPwaId(c),
+    patientAccessCode:         generateAccessCode(c),
+    patientDisplayName:        patientDisplayName || 'Patient ' + String(c).padStart(4, '0'),
+    assignedTherapistId:       therapistId,
+    createdAt:                 now,
+    updatedAt:                 now,
+    status:                    'active',          // active | paused | archived
+    demoMode:                  demoMode,
+    liveModeReady:             false,
+    backendProfileId:          null,
+    syncStatus:                'idle',            // idle | pending | syncing | success | failed
+    lastSyncAt:                null,
+    shareLinks: {
+      installUrl:              '',
+      whatsapp:                '',
+      email:                   '',
+      sms:                     ''
+    },
+    assignedContent: {
+      pathway:                 'Module 1 — Understanding Your Mental Health',
+      pathwayIndex:            1,
+      customLessons:           []
+    },
+    progressSummary: {
+      lessonsCompleted:        0,
+      totalLessons:            15,
+      lastActiveAt:            null,
+      xp:                      0
+    },
+    checkInSummary: {
+      totalCheckins:           0,
+      lastCheckinAt:           null,
+      averageAnxiety:          null,
+      averageMood:             null
+    },
+    calmingExerciseSummary: {
+      totalUsed:               0,
+      lastUsedAt:              null
+    },
+    consentStatus:             'not_given',       // not_given | given | expired
+    emergencyDisclaimerAccepted: false,
+    notesSummary:              []
+  };
+}
+
+// ── Default backend profile ───────────────────────────────────────
+export function makeBackendProfile({ provider = 'local', counter = 1 } = {}) {
+  const now = new Date().toISOString();
+  return {
+    backendProfileId:    generateBackendProfileId(parseInt(counter, 10) || 1),
+    provider:            provider,  // local | supabase | firebase | aws | rest
+    label:               provider === 'local' ? 'Local-only' : 'Backend ' + counter,
+    projectUrl:          '',
+    publicAnonKey:       '',
+    apiBaseUrl:          '',
+    region:              '',
+    publicClientKey:     '',
+    publicToken:         '',
+    status:              'not_configured', // not_configured | configured | testing | connected | failed
+    lastTestedAt:        null,
+    errorMessage:        '',
+    linkedPatientPwaIds: [],
+    createdAt:           now,
+    updatedAt:           now
+  };
+}
